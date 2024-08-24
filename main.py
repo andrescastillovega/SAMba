@@ -9,6 +9,7 @@ import scripts.SAM_embeddings as SAM
 from PIL import Image as ImagePIL
 import json
 import numpy as np
+import cv2
 
 # Set up the database
 db = database('db/images.db')
@@ -123,11 +124,11 @@ async def post(request:Request):
 
     return RedirectResponse(url=f"/annotate/{project_name}/{1}", status_code=303) # 303 is the code to redirect GET after a POST request
 
-def get_img(path:str):
+def get_img(path:str, img_width:int, img_height:int):
     print(path, type(path))
-    img = Div(Img(src=f"../../{path}", id='image'), cls="container")
-    canvas = Canvas(id="canvas")
-    img_container = Div(img, canvas, id="img-container")
+    #img = Div(Img(src=f"../../{path}", id='image'), cls="container")
+    canvas = Canvas(id="canvas", width=img_width, height=img_height)
+    img_container = Div(canvas, id="img-container")
     return img_container
 
 @rt("/annotate/{project_name:str}/{id_image:int}")
@@ -137,10 +138,11 @@ def get(project_name:str, id_image:int):
     
     id_img = Input(id="id_img", type="hidden", value=id_image)
     project = Input(id="project", type="hidden", value=project_name)
+    img_path = Input(id="img_path", type="hidden", value=img[0]['img_path'])
     width = Input(id="img_width", type="hidden", value=img[0]['img_width'])
     height = Input(id="img_height", type="hidden", value=img[0]['img_height'])
     veh_class = Input(id="veh-class", type="hidden", value=1)
-    properties = (id_img, project, width, height, veh_class)
+    properties = (id_img, project, img_path, width, height, veh_class)
 
     if id_image == 1:
         prev_button = A("Previous", id="prev-button", disabled=True, cls="button")
@@ -155,7 +157,7 @@ def get(project_name:str, id_image:int):
         next_button = A("Next", id="next-button", href=f"/save_annotations/{project_name}/{id_image}/next", cls="button")
     
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
-    return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path']), id="main"), Script(src="../../static/js/canvas.js")
+    return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), Script(src="../../static/js/canvas.js")
 
 @rt("/save_annotations/{project_name}/{id_image}/{action}")
 def get(project_name:str, id_image: int, action:str):
@@ -217,11 +219,17 @@ async def post(project:str, id_img:int, request:Request):
         multimask_output=True,
     )
     sorted_ind = np.argsort(scores)[::-1]
-    masks = masks[sorted_ind]
+    masks = masks[sorted_ind][0]
     scores = scores[sorted_ind]
     logits = logits[sorted_ind]
-    print(masks.shape)
-    return 200
+
+    h, w = masks.shape[-2:]
+    mask = masks.astype(np.uint8)
+
+    contours, _ = cv2.findContours(mask,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    print(contours[0].shape)
+    return json.dumps(contours[0].tolist())
 
 
 serve()
