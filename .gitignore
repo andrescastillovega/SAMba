@@ -1,0 +1,7 @@
+__pycache__
+db
+scripts/__pycache__
+scripts/sam2_hiera_large.pt
+static/embeddings
+static/high_res_feats
+static/images
