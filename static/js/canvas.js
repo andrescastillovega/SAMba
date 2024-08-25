@@ -4,28 +4,35 @@ var labels = []
 //Load canvas and img
 document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
 
     const img = new Image();
     img_path = document.getElementById('img_path').value;
-    console.log(img_path);
     img.src = `../../${img_path}`; // Replace with your image path
 
     img.onload = function() {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Create an SVG image element
+        const svgImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+        svgImage.setAttributeNS(null, 'href', img.src);
+        svgImage.setAttribute('x', '0');
+        svgImage.setAttribute('y', '0');
+        svgImage.setAttribute('width', canvas.getAttribute('width'));
+        svgImage.setAttribute('height', canvas.getAttribute('height'));
+
+        // Append the image to the SVG
+        canvas.appendChild(svgImage);
     };
 });
 
 // Function to get the point prompts for SAM
 document.getElementById('canvas').addEventListener('click', function(event) {
   // Get the bounding rectangle of the target
-  var rect = event.target.getBoundingClientRect();
+  var rect = this.getBoundingClientRect();
   var img_width = document.getElementById('img_width').value
   var img_height = document.getElementById('img_height').value
 
   // Calculate cursor position relative to the image
-  var x = (event.clientX - rect.left) / this.width * img_width;
-  var y = (event.clientY - rect.top) / this.height * img_height;
+  var x = (event.clientX - rect.left) / rect.width * img_width;
+  var y = (event.clientY - rect.top) / rect.height * img_height;
 
   // Log the coordinates or use them for other purposes
   console.log(`Cursor Position: X=${x}, Y=${y}`);
@@ -38,34 +45,55 @@ document.getElementById('canvas').addEventListener('click', function(event) {
   }
 });
 
-// Function to draw the SAM masks
+// Function to draw the SAM masks using SVG
 function drawPolygon(data) {
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Start the path
-    ctx.beginPath();
-    
-    // Define the points of the polygon
-    const points = data;
-    
-    // Move to the first point
-    ctx.moveTo(points[0][0][0], points[0][0][1]);
+    const svg = document.getElementById('canvas'); // Ensure there's an SVG element with this ID in your HTML
 
-    // Draw lines to subsequent points
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0][0], points[i][0][1]);
-    }
+    // Define the points of the polygon from the data
+    let polygonString = data["mask"].map(point => point[0].join(',')).join(' ');
+    let boxString = data["box"].map(point => point.join(',')).join(' ');
+
+    // Create a new polygon element
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    // polygon.id
+    polygon.setAttribute('points', polygonString);
+    polygon.classList.add('mask');
+    polygon.style.fill = 'rgba(0, 0, 255, 0.5)';
+    polygon.style.stroke = 'blue';
+
+    // Create annotation box element
+    const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    // box.id
+    box.setAttribute('points', boxString);
+    box.classList.add('box');
+    box.style.fill = 'rgba(0, 0, 0, 0)';
+    box.style.stroke = 'red';
     
-    // Close the path and stroke the shape
-    ctx.closePath();
-    ctx.stroke();
 
-    // Set stroke color to blue
-    ctx.strokeStyle = 'blue';
-    ctx.stroke();
+    // Append the polygon to the SVG
+    svg.appendChild(polygon);
+    svg.appendChild(box);
 
-    // Set fill color to blue with 50% transparency
-    ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-    ctx.fill();
-  }
+    // Save annotation
+    saveAnnotation(data);
+}
+
+
+// Function to save the annotation
+function saveAnnotation(data) {
+    //console.log(data);
+    project = document.getElementById('project').value
+    id_img = document.getElementById('id_img').value
+    $.ajax({
+	      type : "POST",
+	      url : `/save_annotation/${project}/${id_img}`,
+	      dataType: "json",
+	      data: JSON.stringify(data),
+	      contentType: 'application/json;charset=UTF-8',
+	      success: function (data) {
+          console.log("yeyyyy");
+		    }
+	  });
+
+
+}

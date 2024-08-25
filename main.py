@@ -12,13 +12,16 @@ import numpy as np
 import cv2
 
 # Set up the database
-db = database('db/images.db')
+db = database('db/SAMba.db')
 imgs_table = db.t.images
 veh_classes_table = db.t.veh_classes
+annotations_table = db.t.annotations
 if imgs_table not in db.t: imgs_table.create(id=int, project=str, id_img=int, img_height=int, img_width=int, img_path=str, sam2_embedding_path=str, sam2_hres_feats_path=str, pk='id')
 if veh_classes_table not in db.t: veh_classes_table.create(id=int, project=str, veh_class=str, veh_class_id=int, pk='id')
+if annotations_table not in db.t: annotations_table.create(id=int, project=str, id_img=int, veh_class=int, veh_class_id=int, points=str, box=str, pk='id') 
 Image = imgs_table.dataclass()
 VehClass = veh_classes_table.dataclass()
+Annotations = annotations_table.dataclass()
 
 # Set up the app
 app, rt = fast_app(live=True, pico=True,
@@ -127,8 +130,9 @@ async def post(request:Request):
 def get_img(path:str, img_width:int, img_height:int):
     print(path, type(path))
     #img = Div(Img(src=f"../../{path}", id='image'), cls="container")
-    canvas = Canvas(id="canvas", width=img_width, height=img_height)
-    img_container = Div(canvas, id="img-container")
+    #canvas = Canvas(id="canvas", width=img_width, height=img_height)
+    svg = Svg(id="canvas", width=img_width, height=img_height) 
+    img_container = Div(svg, id="img-container")
     return img_container
 
 @rt("/annotate/{project_name:str}/{id_image:int}")
@@ -147,37 +151,25 @@ def get(project_name:str, id_image:int):
     if id_image == 1:
         prev_button = A("Previous", id="prev-button", disabled=True, cls="button")
     else:
-        prev_button = A("Previous", id="prev-button", href=f"/save_annotations/{project_name}/{id_image}/previous", cls="button")
+        prev_button = A("Previous", id="prev-button", href=f"/change_img/{project_name}/{id_image}/previous", cls="button")
 
     current_img = H3(f"Image {id_image} of {nimgs}")
 
     if id_image == nimgs:
         next_button = A("Next", id="next-button", disabled=True, cls="button")
     else:
-        next_button = A("Next", id="next-button", href=f"/save_annotations/{project_name}/{id_image}/next", cls="button")
+        next_button = A("Next", id="next-button", href=f"/change_img/{project_name}/{id_image}/next", cls="button")
     
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
     return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), Script(src="../../static/js/canvas.js")
 
-@rt("/save_annotations/{project_name}/{id_image}/{action}")
+@rt("/change_img/{project_name}/{id_image}/{action}")
 def get(project_name:str, id_image: int, action:str):
     if action == 'previous':
         id_image -= 1
     elif action == 'next':
         id_image += 1
     return RedirectResponse(url=f"/annotate/{project_name}/{id_image}")
-
-
-def serve_img(path:str):
-    return FileResponse(f'../{path}')
-
-@rt("/get_image/{path}")
-def get(path:str):
-    return Div(Img(src=f"../{path}"), id=f'gen-1', cls="container")
-
-#@rt("/static/images/{project_name:str}/{fname:path}.{ext:static}")
-#async def static(project_name:str, fname:str, ext:str): 
-#    return FileResponse(f'static/images/{project_name}/{fname}.{ext}')
 
 @rt('/infer/{project}/{id_img}')
 async def post(project:str, id_img:int, request:Request):    
@@ -227,9 +219,19 @@ async def post(project:str, id_img:int, request:Request):
     mask = masks.astype(np.uint8)
 
     contours, _ = cv2.findContours(mask,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    box = cv2.boxPoints(cv2.minAreaRect(contours[0]))
 
-    print(contours[0].shape)
-    return json.dumps(contours[0].tolist())
+    return json.dumps({"mask": contours[0].tolist(), "box": box.tolist()})
+
+@rt('/save_annotation/{project}/{id_img}')
+async def post(request:Request, project:str, id_img:int):
+    data = await request.body()
+    data = json.loads(data.decode('utf-8'))
+    print(data)
+    return None
+
+
+
 
 
 serve()
