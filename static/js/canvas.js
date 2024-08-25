@@ -4,6 +4,9 @@ var labels = []
 //Load canvas and img
 document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
+  
+    project = document.getElementById('project').value
+    id_img = document.getElementById('id_img').value
 
     const img = new Image();
     img_path = document.getElementById('img_path').value;
@@ -21,6 +24,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // Append the image to the SVG
         canvas.appendChild(svgImage);
     };
+
+    
+    $.ajax({
+	      type : "GET",
+	      url : `/get_annotations/${project}/${id_img}`,
+	      success: function (data) {
+          console.log(data);
+
+          for (ele of data) {
+            console.log(ele);
+            drawPolygon(ele);
+          }
+		    }
+	  });
 });
 
 // Function to get the point prompts for SAM
@@ -69,19 +86,14 @@ function drawPolygon(data) {
     box.style.fill = 'rgba(0, 0, 0, 0)';
     box.style.stroke = 'red';
     
-
     // Append the polygon to the SVG
     svg.appendChild(polygon);
     svg.appendChild(box);
-
-    // Save annotation
-    saveAnnotation(data);
 }
 
 
 // Function to save the annotation
 function saveAnnotation(data) {
-    //console.log(data);
     project = document.getElementById('project').value
     id_img = document.getElementById('id_img').value
     $.ajax({
@@ -94,6 +106,4 @@ function saveAnnotation(data) {
           console.log("yeyyyy");
 		    }
 	  });
-
-
 }

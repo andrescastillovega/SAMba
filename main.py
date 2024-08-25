@@ -90,7 +90,6 @@ async def post(request:Request):
     for class_id, class_name in classes:
         veh_class = VehClass(project=project_name, veh_class=class_name, veh_class_id=int(class_id.split('-')[-1]))
         veh_classes_table.insert(veh_class)
-        print(f"Added {class_name} to {project_name}")
 
     for dir in ['images', 'embeddings', 'high_res_feats']:
         os.makedirs(f"static/{dir}/{project_name}", exist_ok=True)
@@ -117,7 +116,6 @@ async def post(request:Request):
         with open(img_hres_feats_path, 'wb') as f:
             pickle.dump(img_high_res_features, f)
 
-        print(img_path, type(img_path))
         with ImagePIL.open(img_path) as file:
             width, height = file.size
         file.close()
@@ -128,9 +126,6 @@ async def post(request:Request):
     return RedirectResponse(url=f"/annotate/{project_name}/{1}", status_code=303) # 303 is the code to redirect GET after a POST request
 
 def get_img(path:str, img_width:int, img_height:int):
-    print(path, type(path))
-    #img = Div(Img(src=f"../../{path}", id='image'), cls="container")
-    #canvas = Canvas(id="canvas", width=img_width, height=img_height)
     svg = Svg(id="canvas", width=img_width, height=img_height) 
     img_container = Div(svg, id="img-container")
     return img_container
@@ -227,11 +222,15 @@ async def post(project:str, id_img:int, request:Request):
 async def post(request:Request, project:str, id_img:int):
     data = await request.body()
     data = json.loads(data.decode('utf-8'))
-    print(data)
+    annotation = Annotations(project=project, id_img=id_img, veh_class="Car", veh_class_id=1, points=str(data["mask"]), box=str(data["box"]))
+    annotations_table.insert(annotation)                        
     return None
 
-
-
+@rt('/get_annotations/{project}/{id_img}')
+def get(project:str, id_img:int):
+    query = db.q(f"SELECT * FROM annotations WHERE project = '{project}' AND id_img = {id_img}")
+    query = [ {"mask": json.loads(q['points']), "box": json.loads(q['box'])} for q in query ]
+    return Response(content=json.dumps(query), media_type='application/json', status_code=201)
 
 
 serve()

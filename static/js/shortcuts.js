@@ -23,8 +23,9 @@ document.addEventListener('keydown', function(event) {
 	          success: function (data) {
 		          points.length = 0;
               labels.length = 0;
-              console.log(data);
+              saveAnnotation(data);
               drawPolygon(data);
+
 		        }
 	      });
     }
