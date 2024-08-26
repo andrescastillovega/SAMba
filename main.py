@@ -228,6 +228,7 @@ async def post(request:Request, project:str, id_img:int):
 
 @rt('/get_annotations/{project}/{id_img}')
 def get(project:str, id_img:int):
+    print(project, id_img)
     query = db.q(f"SELECT * FROM annotations WHERE project = '{project}' AND id_img = {id_img}")
     query = [ {"mask": json.loads(q['points']), "box": json.loads(q['box'])} for q in query ]
     return Response(content=json.dumps(query), media_type='application/json', status_code=201)

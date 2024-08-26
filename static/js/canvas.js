@@ -10,33 +10,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const img = new Image();
     img_path = document.getElementById('img_path').value;
-    img.src = `../../${img_path}`; // Replace with your image path
+    img.src = `../../${img_path}`; 
 
-    img.onload = function() {
-        // Create an SVG image element
-        const svgImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-        svgImage.setAttributeNS(null, 'href', img.src);
-        svgImage.setAttribute('x', '0');
-        svgImage.setAttribute('y', '0');
-        svgImage.setAttribute('width', canvas.getAttribute('width'));
-        svgImage.setAttribute('height', canvas.getAttribute('height'));
+    // Create an SVG image element
+    const svgImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    svgImage.setAttributeNS(null, 'href', img.src);
+    svgImage.setAttribute('x', '0');
+    svgImage.setAttribute('y', '0');
+    svgImage.setAttribute('width', canvas.getAttribute('width'));
+    svgImage.setAttribute('height', canvas.getAttribute('height'));
 
-        // Append the image to the SVG
-        canvas.appendChild(svgImage);
-    };
+    // Append the image to the SVG
+    canvas.appendChild(svgImage);
 
-    
     $.ajax({
-	      type : "GET",
-	      url : `/get_annotations/${project}/${id_img}`,
-	      success: function (data) {
-          console.log(data);
-
-          for (ele of data) {
-            console.log(ele);
-            drawPolygon(ele);
-          }
-		    }
+    type : "GET",
+    url : `/get_annotations/${project}/${id_img}`,
+    success: function (annotations) {
+        // Draw annotations on top of image
+        for (annotation of annotations) {
+            drawPolygon(annotation);
+        }
+    },
+    error: function(xhr, status, error) {
+        var err = eval("(" + xhr.responseText + ")");
+        console.log(err.Message);
+      }, 
 	  });
 });
 
@@ -103,7 +102,6 @@ function saveAnnotation(data) {
 	      data: JSON.stringify(data),
 	      contentType: 'application/json;charset=UTF-8',
 	      success: function (data) {
-          console.log("yeyyyy");
 		    }
 	  });
 }
