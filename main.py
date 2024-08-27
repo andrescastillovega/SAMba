@@ -251,16 +251,17 @@ async def post(request:Request, project:str, id_img:int, class_id:int):
     data = await request.body()
     data = json.loads(data.decode('utf-8'))
     annotation = Annotations(project=project, id_img=id_img, class_id=class_id, points=str(data["mask"]), box=str(data["box"]))
-    annotations_table.insert(annotation)                        
-    return None
+    annotation = annotations_table.insert(annotation)
+    data['id'] = annotation.id
+    return data
 
 @rt('/get_annotations/{project}/{id_img}')
 def get(project:str, id_img:int):
-    query = db.q(f"""SELECT *
+    query = db.q(f"""SELECT annotations.*, classes.color
                    FROM annotations
                    LEFT JOIN classes ON annotations.class_id = classes.class_id
                    WHERE annotations.project = '{project}' AND annotations.id_img = {id_img};""")
-    query = [ {"class_id": q['class_id'], "color": q['color'], "mask": json.loads(q['points']), "box": json.loads(q['box'])} for q in query ]
+    query = [ {"id": q['id'], "class_id": q['class_id'], "color": q['color'], "mask": json.loads(q['points']), "box": json.loads(q['box'])} for q in query ]
     return Response(content=json.dumps(query), media_type='application/json', status_code=201)
 
 

@@ -104,7 +104,7 @@ function drawAnnotation(data) {
 
     // Create a new polygon element
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    // polygon.id
+    polygon.id = `polygon-${data['id']}`
     polygon.setAttribute('points', polygonString);
     polygon.classList.add('mask');
     polygon.style.fill = data["color"] + "65";
@@ -112,7 +112,7 @@ function drawAnnotation(data) {
 
     // Create annotation box element
     const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    // box.id
+    box.id = `box-${data['id']}`
     box.setAttribute('points', boxString);
     box.classList.add('box');
     box.style.stroke = data["color"];
@@ -125,7 +125,7 @@ function drawAnnotation(data) {
 }
 
 
-// Function to save the annotation
+// Function to save the annotation and trigger the annotation drawing
 function saveAnnotation(data) {
     project = document.getElementById('project').value
     id_img = document.getElementById('id_img').value
@@ -137,6 +137,8 @@ function saveAnnotation(data) {
 	      data: JSON.stringify(data),
 	      contentType: 'application/json;charset=UTF-8',
 	      success: function (data) {
+          console.log(data);
+          drawAnnotation(data);
 		    }
 	  });
 }
