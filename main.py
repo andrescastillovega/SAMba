@@ -204,7 +204,6 @@ async def post(project:str, id_img:int, class_id:int, request:Request):
 
     query = db.q(f"SELECT * FROM images WHERE project = '{project}' AND id_img = {id_img}")
     color = db.q(f"SELECT color FROM classes WHERE project = '{project}' AND class_id = {class_id}")[0]['color']
-    print(color)
     img_path = query[0]["img_path"]
     embeddings_path = query[0]["sam2_embedding_path"]
     hres_path = query[0]["sam2_hres_feats_path"]
@@ -257,7 +256,6 @@ async def post(request:Request, project:str, id_img:int, class_id:int):
 
 @rt('/get_annotations/{project}/{id_img}')
 def get(project:str, id_img:int):
-    #query = db.q(f"SELECT * FROM annotations WHERE project = '{project}' AND id_img = {id_img}")
     query = db.q(f"""SELECT *
                    FROM annotations
                    LEFT JOIN classes ON annotations.class_id = classes.class_id
