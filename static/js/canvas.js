@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     success: function (annotations) {
         // Draw annotations on top of image
         for (annotation of annotations) {
-            drawPolygon(annotation);
+            drawAnnotation(annotation);
         }
     },
     error: function(xhr, status, error) {
@@ -62,7 +62,7 @@ document.getElementById('canvas').addEventListener('click', function(event) {
 });
 
 // Function to draw the SAM masks using SVG
-function drawPolygon(data) {
+function drawAnnotation(data) {
     const svg = document.getElementById('canvas'); // Ensure there's an SVG element with this ID in your HTML
 
     // Define the points of the polygon from the data
@@ -74,16 +74,17 @@ function drawPolygon(data) {
     // polygon.id
     polygon.setAttribute('points', polygonString);
     polygon.classList.add('mask');
-    polygon.style.fill = 'rgba(0, 0, 255, 0.5)';
-    polygon.style.stroke = 'blue';
+    polygon.style.fill = data["color"] + "65";
+    //polygon.style.stroke = data["color"];
 
     // Create annotation box element
     const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     // box.id
     box.setAttribute('points', boxString);
     box.classList.add('box');
-    box.style.fill = 'rgba(0, 0, 0, 0)';
-    box.style.stroke = 'red';
+    box.style.stroke = data["color"];
+    box.style.fill = data["color"] + "00";
+    box.style.strokeWidth = "2px";
     
     // Append the polygon to the SVG
     svg.appendChild(polygon);
@@ -95,9 +96,10 @@ function drawPolygon(data) {
 function saveAnnotation(data) {
     project = document.getElementById('project').value
     id_img = document.getElementById('id_img').value
+    class_id = document.getElementById('class').value
     $.ajax({
 	      type : "POST",
-	      url : `/save_annotation/${project}/${id_img}`,
+	      url : `/save_annotation/${project}/${id_img}/${class_id}`,
 	      dataType: "json",
 	      data: JSON.stringify(data),
 	      contentType: 'application/json;charset=UTF-8',

@@ -1,0 +1,6 @@
+input[type="color"] {
+  width: 20px !important;
+  height: 20px;
+  padding: 0px;
+  margin-left: 10px;
+}
