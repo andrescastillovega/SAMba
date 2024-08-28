@@ -1,6 +1,8 @@
 var points = []
 var labels = []
 
+var editmode = false
+
 //Load canvas and img
 document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
@@ -39,27 +41,54 @@ document.addEventListener('DOMContentLoaded', function() {
 	  });
 });
 
+// Function to delete the annotation
+function deleteAnnotation(box) {
+  if (editmode) {
+      id = box.id.split("-")[1]
+
+      // Delete mask
+      masks = Array.from(document.getElementsByClassName("mask"));
+      for (let i = 0; i < masks.length; i++) {
+        if (masks[i].id == `polygon-${id}`) {
+          masks[i].remove();
+        }
+      }
+
+      // Delete box
+      box.remove();
+
+      // Delete annotation in db
+      $.ajax({
+          type : "GET",
+          url : `/delete_annotation/${id}`,
+          success: function () {
+          }
+      });
+  }
+}
+
 // Function to get the point prompts for SAM
 document.getElementById('canvas').addEventListener('click', function(event) {
-  // Get the bounding rectangle of the target
-  var rect = this.getBoundingClientRect();
-  var img_width = document.getElementById('img_width').value
-  var img_height = document.getElementById('img_height').value
+  if (editmode == false) {
+      // Get the bounding rectangle of the target
+      var rect = this.getBoundingClientRect();
+      var img_width = document.getElementById('img_width').value
+      var img_height = document.getElementById('img_height').value
 
-  // Calculate cursor position relative to the image
-  var x = (event.clientX - rect.left) / rect.width * img_width;
-  var y = (event.clientY - rect.top) / rect.height * img_height;
+      // Calculate cursor position relative to the image
+      var x = (event.clientX - rect.left) / rect.width * img_width;
+      var y = (event.clientY - rect.top) / rect.height * img_height;
 
-  // Log the coordinates or use them for other purposes
-  console.log(`Cursor Position: X=${x}, Y=${y}`);
-  points.push([x, y]);
-  
-  if (event.ctrlKey) {
-      labels.push(0);
-      drawPointPrompt(event.clientX - rect.left, event.clientY - rect.top, 0);
-  } else {
-      labels.push(1);
-      drawPointPrompt(event.clientX - rect.left, event.clientY - rect.top, 1);
+      // Log the coordinates or use them for other purposes
+      points.push([x, y]);
+      
+      if (event.ctrlKey) {
+          labels.push(0);
+          drawPointPrompt(event.clientX - rect.left, event.clientY - rect.top, 0);
+      } else {
+          labels.push(1);
+          drawPointPrompt(event.clientX - rect.left, event.clientY - rect.top, 1);
+      }
   }
 });
 
@@ -118,6 +147,7 @@ function drawAnnotation(data) {
     box.style.stroke = data["color"];
     box.style.fill = data["color"] + "00";
     box.style.strokeWidth = "2px";
+    box.setAttribute('onclick', 'deleteAnnotation(this);');
     
     // Append the polygon to the SVG
     svg.appendChild(polygon);
@@ -142,3 +172,5 @@ function saveAnnotation(data) {
 		    }
 	  });
 }
+
+

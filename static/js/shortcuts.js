@@ -35,5 +35,10 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'c') {
       cleanPointPrompts();
     }
+
+    if (event.key === 'e') {
+      editmode = !editmode;
+      console.log(editmode);
+    }
 });
 

@@ -255,6 +255,11 @@ async def post(request:Request, project:str, id_img:int, class_id:int):
     data['id'] = annotation.id
     return data
 
+@rt('/delete_annotation/{annotation_id}')
+def get(annotation_id:int):
+    annotations_table.delete(annotation_id)
+    return None
+
 @rt('/get_annotations/{project}/{id_img}')
 def get(project:str, id_img:int):
     query = db.q(f"""SELECT annotations.*, classes.color
