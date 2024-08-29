@@ -8,9 +8,16 @@ document.addEventListener('keydown', function(event) {
     }
     
     if (event.key.match(/^[0-9]$/)) {
-        var new_class = document.getElementById(`class-${event.key}`).innerText
+        // Unselect previous class
+        prev_class = document.getElementById('class').value;
+        document.getElementById(`class-${prev_class}`).style.backgroundColor = '';
+        document.getElementById(`class-${prev_class}`).style.border = '';
+
+        // Set the new class
+        new_color = document.getElementById(`class-${event.key}`).getAttribute('color');
+        document.getElementById(`class-${event.key}`).style.backgroundColor = `${new_color}65`;
+        document.getElementById(`class-${event.key}`).style.border = `3px solid ${new_color}`;
         document.getElementById('class').value = event.key;
-        document.getElementById(`current-class`).innerText = `Current class: ${new_class}` 
     }
 
     if (event.key === 'i') {
@@ -38,7 +45,20 @@ document.addEventListener('keydown', function(event) {
 
     if (event.key === 'e') {
       editmode = !editmode;
-      console.log(editmode);
+      var img = document.getElementById('img')
+      var canvas = document.getElementById('canvas')
+      
+      const editModeDiv = document.createElement('div');
+      editModeDiv.id = "edit-mode-msg";
+      editModeDiv.innerHTML = "<h3>Edit Mode - WARNING!</h3>";
+
+      if (editmode) {
+        img.style.opacity = 0.3;
+        canvas.insertAdjacentElement('beforebegin', editModeDiv)
+      } else {
+        document.getElementById('img').style.opacity = 1.0;
+        document.getElementById('edit-mode-msg').remove();
+      }
     }
 });
 

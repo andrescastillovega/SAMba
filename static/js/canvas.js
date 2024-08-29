@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Create an SVG image element
     const svgImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    svgImage.id = "img";
     svgImage.setAttributeNS(null, 'href', img.src);
     svgImage.setAttribute('x', '0');
     svgImage.setAttribute('y', '0');
@@ -39,6 +40,12 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(err.Message);
       }, 
 	  });
+
+    // Select default class
+    def_class = document.getElementById('class').value;
+    def_color = document.getElementById(`class-${def_class}`).getAttribute('color');
+    document.getElementById(`class-${def_class}`).style.backgroundColor = `${def_color}65`;
+    document.getElementById(`class-${def_class}`).style.border = `3px solid ${def_color}`;
 });
 
 // Function to delete the annotation
@@ -137,7 +144,6 @@ function drawAnnotation(data) {
     polygon.setAttribute('points', polygonString);
     polygon.classList.add('mask');
     polygon.style.fill = data["color"] + "65";
-    //polygon.style.stroke = data["color"];
 
     // Create annotation box element
     const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -167,7 +173,6 @@ function saveAnnotation(data) {
 	      data: JSON.stringify(data),
 	      contentType: 'application/json;charset=UTF-8',
 	      success: function (data) {
-          console.log(data);
           drawAnnotation(data);
 		    }
 	  });

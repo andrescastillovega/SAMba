@@ -21,8 +21,16 @@ a.button:hover {
   height: 100px;           /* Set to desired height */
 }
 
+#edit-mode-msg {
+  border-radius: 10px;
+  background-color: #FFA50060;
+  text-align: center;
+}
+
 #img-container {
-  position: relative;
+  display: flex;
+  justify-content: center; /* Centers content horizontally */
+  align-items: center;     /* Optional: Centers content vertically if needed */
 }
 
 #image {
@@ -34,3 +42,10 @@ a.button:hover {
   pointer-events: all;
   transition: fill 0.5s ease, stroke 0.5s ease;
 }
+
+.class-label {
+  border-radius: 10px;
+  height: 100%;
+  width: 100%;
+}
+

@@ -143,7 +143,7 @@ async def post(request:Request):
 
 def get_img(path:str, img_width:int, img_height:int):
     svg = Svg(id="canvas", width=img_width, height=img_height) 
-    img_container = Div(svg, id="img-container")
+    img_container = Div(Div(svg), id="img-container", cls="container")
     return img_container
 
 @rt("/annotate/{project_name:str}/{id_image:int}")
@@ -175,12 +175,10 @@ def get(project_name:str, id_image:int):
     classes_list = []
     for annotation_class in annotation_classes:
         classes_list.append(
-            Div(Kbd(f"{annotation_class['class_id']}"), B(f"{annotation_class['annotation_class']}", id=f"class-{annotation_class['class_id']}"))
+            Div(Kbd(f"{annotation_class['class_id']}"), B(f"{annotation_class['annotation_class']}"), cls="class-label", id=f"class-{annotation_class['class_id']}", color=f"{annotation_class['color']}")
         )
 
-    current_class = P(B(f"Current class: {annotation_classes[0]['annotation_class']}", id="current-class"))
-
-    footer = Footer(Div(current_class, Div(tuple(classes_list), cls="grid")))
+    footer = Footer(Div(Div(tuple(classes_list), cls="grid"), cls="container"))
 
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
     return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, Script(src="../../static/js/canvas.js")
