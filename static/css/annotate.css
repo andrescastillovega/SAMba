@@ -18,7 +18,7 @@ a.button:hover {
   display: flex;
   justify-content: center; /* Center horizontally */
   align-items: center;     /* Center vertically */
-  height: 100px;           /* Set to desired height */
+  height: 70px;           /* Set to desired height */
 }
 
 #edit-mode-msg {

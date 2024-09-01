@@ -172,13 +172,25 @@ def get(project_name:str, id_image:int):
     else:
         next_button = A("Next", id="next-button", href=f"/change_img/{project_name}/{id_image}/next", cls="button")
     
+    classes_title = Div(H3("Annotation classes"), cls="centered-div")
     classes_list = []
     for annotation_class in annotation_classes:
         classes_list.append(
             Div(Kbd(f"{annotation_class['class_id']}"), B(f"{annotation_class['annotation_class']}"), cls="class-label", id=f"class-{annotation_class['class_id']}", color=f"{annotation_class['color']}")
         )
-
-    footer = Footer(Div(Div(tuple(classes_list), cls="grid"), cls="container"))
+    classes_div = Div(Div(tuple(classes_list), cls="grid"), cls="container")
+    other_ks_title = Div(H3("Keyboard shorcuts"), cls="centered-div")
+    other_ks = Div(
+                    Div(
+                        (Div(Kbd("q"), B("Previous image")),
+                        Div(Kbd("w"), B("Next image")),
+                        Div(Kbd("i"), B("Infer class")),
+                        Div(Kbd("c"), B("Clear prompt points")),
+                        Div(Kbd("e"), B("Edit mode")),
+                        Div(Kbd("d"), B("Delete annotation (only edit mode)"))),
+                        cls="grid")
+                    , cls="container")
+    footer = Footer((classes_title, classes_div, other_ks_title, other_ks))
 
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
     return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, Script(src="../../static/js/canvas.js")
