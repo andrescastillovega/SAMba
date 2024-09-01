@@ -48,29 +48,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById(`class-${def_class}`).style.border = `3px solid ${def_color}`;
 });
 
-// Function to delete the annotation
-function deleteAnnotation(box) {
+// Function to select an annotation
+function selectAnnotation(box) {
   if (editmode) {
-      id = box.id.split("-")[1]
+    // Unselect previous boxes
+    boxes = Array.from(document.getElementsByClassName("selected"));
+    for (let i = 0; i < boxes.length; i++) {
+      boxes[i].classList.remove("selected");
+    }
 
-      // Delete mask
-      masks = Array.from(document.getElementsByClassName("mask"));
-      for (let i = 0; i < masks.length; i++) {
-        if (masks[i].id == `polygon-${id}`) {
-          masks[i].remove();
-        }
-      }
-
-      // Delete box
-      box.remove();
-
-      // Delete annotation in db
-      $.ajax({
-          type : "GET",
-          url : `/delete_annotation/${id}`,
-          success: function () {
-          }
-      });
+    // Select current box
+    box.classList.add("selected");
   }
 }
 
@@ -149,11 +137,9 @@ function drawAnnotation(data) {
     const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     box.id = `box-${data['id']}`
     box.setAttribute('points', boxString);
+    box.style.setProperty('--color', data['color']);
     box.classList.add('box');
-    box.style.stroke = data["color"];
-    box.style.fill = data["color"] + "00";
-    box.style.strokeWidth = "2px";
-    box.setAttribute('onclick', 'deleteAnnotation(this);');
+    box.setAttribute('onclick', 'selectAnnotation(this);');
     
     // Append the polygon to the SVG
     svg.appendChild(polygon);

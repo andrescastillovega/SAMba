@@ -53,11 +53,47 @@ document.addEventListener('keydown', function(event) {
       editModeDiv.innerHTML = "<h3>Edit Mode - WARNING!</h3>";
 
       if (editmode) {
+        // Add edit-mode msg
         img.style.opacity = 0.3;
         canvas.insertAdjacentElement('beforebegin', editModeDiv)
+
+        // Add edit-mode class
+        boxes = document.getElementsByClassName('box');
+        for (box of boxes) {
+          box.classList.add("edit-mode");
+        }
       } else {
+        // Remove edit mode msg
         document.getElementById('img').style.opacity = 1.0;
         document.getElementById('edit-mode-msg').remove();
+
+        // Remove edit-mode and selected clases
+        boxes = document.getElementsByClassName('box');
+        for (box of boxes) {
+          box.classList.remove("edit-mode", "selected");
+        }
+
+      }
+    }
+    
+    if (event.key === 'd') {
+      if (editmode) {
+        annotation = document.getElementsByClassName("selected")[0]
+        id = annotation.id.split("-")[1]
+
+        // Delete mask
+        document.getElementById(`polygon-${id}`).remove();
+
+        // Delete box
+        annotation.remove();
+
+        // Delete annotation in db
+        $.ajax({
+            type : "GET",
+            url : `/delete_annotation/${id}`,
+            success: function () {
+            }
+        });
       }
     }
 });

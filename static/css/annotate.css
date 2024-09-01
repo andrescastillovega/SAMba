@@ -49,3 +49,17 @@ a.button:hover {
   width: 100%;
 }
 
+.box {
+  stroke-width: 2px;
+  stroke: var(--color);
+  fill: var(--color);
+  fill-opacity: 0;
+}
+
+.edit-mode {
+  stroke-width: 0px;
+}
+
+.selected {
+  stroke-width: 5px;
+}
