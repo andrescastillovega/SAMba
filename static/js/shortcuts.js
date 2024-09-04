@@ -70,8 +70,12 @@ document.addEventListener('keydown', function(event) {
         // Remove edit-mode and selected clases
         boxes = document.getElementsByClassName('box');
         for (box of boxes) {
-          box.classList.remove("edit-mode", "selected");
+          box.classList.remove("edit-mode", "selected", "dragabble", "edited");
+          removeMouseListeners(box);
         }
+
+        // Update all edited annotations in DB
+        updateAnnotations();
 
       }
     }

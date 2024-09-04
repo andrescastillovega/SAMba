@@ -193,7 +193,7 @@ def get(project_name:str, id_image:int):
     footer = Footer((classes_title, classes_div, other_ks_title, other_ks))
 
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
-    return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, Script(src="../../static/js/canvas.js")
+    return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, Script(src="../../static/js/canvas.js"), Script(src="../../static/js/editAnnotation.js")
 
 @rt("/change_img/{project_name}/{id_image}/{action}")
 def get(project_name:str, id_image: int, action:str):
@@ -278,6 +278,16 @@ def get(project:str, id_img:int):
                    WHERE annotations.project = '{project}' AND annotations.id_img = {id_img};""")
     query = [ {"id": q['id'], "class_id": q['class_id'], "color": q['color'], "mask": json.loads(q['points']), "box": json.loads(q['box'])} for q in query ]
     return Response(content=json.dumps(query), media_type='application/json', status_code=201)
+
+@rt('/update_annotation/{id_annotation}')
+async def post(request:Request, id_annotation:int):
+    data = await request.body()
+    annotation = annotations_table.get(id_annotation)
+    annotation.box = str(data.decode('utf-8'))
+    annotation.points = "[[[]]]"
+    annotations_table.update(annotation)
+    return None
+    
 
 
 serve()

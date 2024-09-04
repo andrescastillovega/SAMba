@@ -61,5 +61,15 @@ a.button:hover {
 }
 
 .selected {
-  stroke-width: 5px;
+  stroke-dasharray: 0 0 !important;
+  stroke-width: 5px !important;
+}
+
+.edited-box {
+  stroke-dasharray: 10 5;
+  stroke-width: 3px;
+}
+
+.edited-mask {
+  fill-opacity: 1;
 }

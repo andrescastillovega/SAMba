@@ -6,7 +6,7 @@ var editmode = false
 //Load canvas and img
 document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
-  
+
     project = document.getElementById('project').value
     id_img = document.getElementById('id_img').value
 
@@ -51,14 +51,17 @@ document.addEventListener('DOMContentLoaded', function() {
 // Function to select an annotation
 function selectAnnotation(box) {
   if (editmode) {
-    // Unselect previous boxes
-    boxes = Array.from(document.getElementsByClassName("selected"));
-    for (let i = 0; i < boxes.length; i++) {
-      boxes[i].classList.remove("selected");
+// Unselect previous boxes
+    var prev_sel = document.getElementsByClassName("selected")[0];
+    if (prev_sel !== undefined) {
+      prev_sel.classList.remove("selected", "draggable");
+      removeMouseListeners(prev_sel);
     }
 
     // Select current box
-    box.classList.add("selected");
+    box.classList.add("selected", "draggable");
+    addMouseListeners(box);
+    
   }
 }
 
@@ -131,7 +134,7 @@ function drawAnnotation(data) {
     polygon.id = `polygon-${data['id']}`
     polygon.setAttribute('points', polygonString);
     polygon.classList.add('mask');
-    polygon.style.fill = data["color"] + "65";
+    polygon.setAttribute('fill', data["color"] + "65");
 
     // Create annotation box element
     const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -140,7 +143,12 @@ function drawAnnotation(data) {
     box.style.setProperty('--color', data['color']);
     box.classList.add('box');
     box.setAttribute('onclick', 'selectAnnotation(this);');
-    
+
+    // Change style if box is edited
+    if (!polygonString) {
+      box.classList.add('edited-box');
+    }
+
     // Append the polygon to the SVG
     svg.appendChild(polygon);
     svg.appendChild(box);
@@ -162,6 +170,26 @@ function saveAnnotation(data) {
           drawAnnotation(data);
 		    }
 	  });
+}
+
+// Function to update all edited annotations in the DB 
+function updateAnnotations() {
+  var editedBoxes = Array.from(document.getElementsByClassName("edited-box"));
+
+  for (box of editedBoxes) {
+    var id_box = box.id.split("-")[1];
+    var pointsArray = box.getAttribute('points').trim().split(/\s+/);
+    var pointsStringList = "[" + pointsArray.map(point => `[${point}]`).join(", ") + "]";
+    
+    $.ajax({
+	      type : "POST",
+	      url : `/update_annotation/${id_box}`,
+	      dataType: "json",
+	      data: pointsStringList,
+	      contentType: 'application/json;charset=UTF-8',
+	  });
+  }
+  
 }
 
 
