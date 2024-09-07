@@ -48,79 +48,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById(`class-${def_class}`).style.border = `3px solid ${def_color}`;
 });
 
-// Function to select an annotation
-function selectAnnotation(box) {
-  if (editmode) {
-// Unselect previous boxes
-    var prev_sel = document.getElementsByClassName("selected")[0];
-    if (prev_sel !== undefined) {
-      prev_sel.classList.remove("selected", "draggable");
-      removeMouseListeners(prev_sel);
-    }
-
-    // Select current box
-    box.classList.add("selected", "draggable");
-    addMouseListeners(box);
-    
-  }
-}
-
-// Function to get the point prompts for SAM
-document.getElementById('canvas').addEventListener('click', function(event) {
-  if (editmode == false) {
-      // Get the bounding rectangle of the target
-      var rect = this.getBoundingClientRect();
-      var img_width = document.getElementById('img_width').value
-      var img_height = document.getElementById('img_height').value
-
-      // Calculate cursor position relative to the image
-      var x = (event.clientX - rect.left) / rect.width * img_width;
-      var y = (event.clientY - rect.top) / rect.height * img_height;
-
-      // Log the coordinates or use them for other purposes
-      points.push([x, y]);
-      
-      if (event.ctrlKey) {
-          labels.push(0);
-          drawPointPrompt(event.clientX - rect.left, event.clientY - rect.top, 0);
-      } else {
-          labels.push(1);
-          drawPointPrompt(event.clientX - rect.left, event.clientY - rect.top, 1);
-      }
-  }
-});
-
-// Function to draw the point prompts
-function drawPointPrompt(x, y, label) {
-  const svg = document.getElementById('canvas');
-
-  // Create a new circle element
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circle.classList.add('point-prompt');
-  circle.setAttribute('cx', x);
-  circle.setAttribute('cy', y);
-  circle.setAttribute('r', 5);
-  circle.style.stroke = 'white';
-  circle.style.strokeWidth = '2px';
-  if (label == 0) {
-    circle.style.fill = 'red';  // Color of the circle
-  } else {
-    circle.style.fill = 'green';
-  }
-
-  // Append the circle to the SVG
-  svg.appendChild(circle);
-}
-
-// Function to clean all point Prompts
-function cleanPointPrompts() {
-  var points = Array.from(document.getElementsByClassName('point-prompt'));
-  for (point of points) {
-    point.remove();
-  }
-}
-
-
 // Function to draw the SAM masks using SVG
 function drawAnnotation(data) {
     const svg = document.getElementById('canvas'); // Ensure there's an SVG element with this ID in your HTML
@@ -154,7 +81,6 @@ function drawAnnotation(data) {
     svg.appendChild(box);
 }
 
-
 // Function to save the annotation and trigger the annotation drawing
 function saveAnnotation(data) {
     project = document.getElementById('project').value
@@ -172,24 +98,14 @@ function saveAnnotation(data) {
 	  });
 }
 
-// Function to update all edited annotations in the DB 
-function updateAnnotations() {
-  var editedBoxes = Array.from(document.getElementsByClassName("edited-box"));
-
-  for (box of editedBoxes) {
-    var id_box = box.id.split("-")[1];
-    var pointsArray = box.getAttribute('points').trim().split(/\s+/);
-    var pointsStringList = "[" + pointsArray.map(point => `[${point}]`).join(", ") + "]";
-    
-    $.ajax({
-	      type : "POST",
-	      url : `/update_annotation/${id_box}`,
-	      dataType: "json",
-	      data: pointsStringList,
-	      contentType: 'application/json;charset=UTF-8',
-	  });
+// Function to handle clicks on canvas
+document.getElementById('canvas').addEventListener('click', function(event) {
+  if (editmode) {
+      if (event.target.id === 'canvas' || event.target.id === 'img') {
+          unselectBoxes();
+      } 
+  } else {
+      getPointPrompt(this);
   }
-  
-}
-
+});
 

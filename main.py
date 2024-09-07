@@ -193,7 +193,8 @@ def get(project_name:str, id_image:int):
     footer = Footer((classes_title, classes_div, other_ks_title, other_ks))
 
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
-    return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, Script(src="../../static/js/canvas.js"), Script(src="../../static/js/editAnnotation.js")
+    js_scripts = (Script(src="../../static/js/canvas.js"), Script(src="../../static/js/editAnnotation.js"), Script(src="../../static/js/prompt.js"))
+    return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, js_scripts 
 
 @rt("/change_img/{project_name}/{id_image}/{action}")
 def get(project_name:str, id_image: int, action:str):
