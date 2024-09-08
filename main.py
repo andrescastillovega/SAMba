@@ -17,7 +17,7 @@ classes_table = db.t.classes
 annotations_table = db.t.annotations
 if imgs_table not in db.t: imgs_table.create(id=int, project=str, id_img=int, img_height=int, img_width=int, img_path=str, sam2_embedding_path=str, sam2_hres_feats_path=str, pk='id')
 if classes_table not in db.t: classes_table.create(id=int, project=str, annotation_class=str, class_id=int, color=str, pk='id')
-if annotations_table not in db.t: annotations_table.create(id=int, project=str, id_img=int, class_id=int, points=str, box=str, pk='id') 
+if annotations_table not in db.t: annotations_table.create(id=int, project=str, id_img=int, class_id=int, points=str, box=str, cx=float, cy=float, width=float, height=float, angle=float, pk='id') 
 Image = imgs_table.dataclass()
 Class = classes_table.dataclass()
 Annotations = annotations_table.dataclass()
@@ -193,7 +193,13 @@ def get(project_name:str, id_image:int):
     footer = Footer((classes_title, classes_div, other_ks_title, other_ks))
 
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
-    js_scripts = (Script(src="../../static/js/canvas.js"), Script(src="../../static/js/editAnnotation.js"), Script(src="../../static/js/prompt.js"))
+    js_scripts = (
+            Script(src="../../static/js/canvas.js"),
+            Script(src="../../static/js/prompt.js"),
+            Script(src="../../static/js/editAnnotation.js"),
+            Script(src="../../static/js/edit_mode/dragAnnotation.js"),
+            Script(src="../../static/js/edit_mode/resizeAnnotation.js")
+    )
     return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, js_scripts 
 
 @rt("/change_img/{project_name}/{id_image}/{action}")
@@ -253,15 +259,22 @@ async def post(project:str, id_img:int, class_id:int, request:Request):
     mask = masks.astype(np.uint8)
 
     contours, _ = cv2.findContours(mask,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    box = cv2.boxPoints(cv2.minAreaRect(contours[0]))
+    min_area_rect = cv2.minAreaRect(contours[0])
+    center, dims, rot_angle = min_area_rect
+    box = cv2.boxPoints(min_area_rect)
 
-    return json.dumps({"class_id": class_id, "color": color, "mask": contours[0].tolist(), "box": box.tolist()})
+    return json.dumps({"class_id": class_id, "color": color, "mask": contours[0].tolist(),
+                       "box": box.tolist(), "cx": center[0], "cy": center[1],
+                       "width": dims[0], "height": dims[1], "angle": rot_angle})
 
 @rt('/save_annotation/{project}/{id_img}/{class_id}')
 async def post(request:Request, project:str, id_img:int, class_id:int):
     data = await request.body()
     data = json.loads(data.decode('utf-8'))
-    annotation = Annotations(project=project, id_img=id_img, class_id=class_id, points=str(data["mask"]), box=str(data["box"]))
+    annotation = Annotations(project=project, id_img=id_img, class_id=class_id, 
+                             points=str(data["mask"]), box=str(data["box"]),
+                             cx=data["cx"], cy=data["cy"], width=data["width"],
+                             height=data["height"], angle=data["angle"])
     annotation = annotations_table.insert(annotation)
     data['id'] = annotation.id
     return data
