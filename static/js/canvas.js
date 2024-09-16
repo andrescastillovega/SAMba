@@ -1,8 +1,6 @@
 var points = []
 var labels = []
 
-var editmode = false
-
 //Load canvas and img
 document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
@@ -54,7 +52,11 @@ function drawAnnotation(data) {
 
     // Define the points of the polygon from the data
     let polygonString = data["mask"].map(point => point[0].join(',')).join(' ');
-    let boxString = data["box"].map(point => point.join(',')).join(' ');
+    let boxCoords = boxPoints([data['cx'], data['cy']],
+                              data['width'],
+                              data['height'],
+                              data['angle']);
+    let boxString = boxCoords.map(point => point.join(',')).join(' ');
 
     // Create a new polygon element
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -67,6 +69,11 @@ function drawAnnotation(data) {
     const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     box.id = `box-${data['id']}`
     box.setAttribute('points', boxString);
+    box.setAttribute('cx', data["cx"]); 
+    box.setAttribute('cy', data["cy"]);
+    box.setAttribute('height', data['height']);
+    box.setAttribute('width', data['width']);
+    box.setAttribute('angle', data['angle']);
     box.style.setProperty('--color', data['color']);
     box.classList.add('box');
     box.setAttribute('onclick', 'selectAnnotation(this);');
@@ -109,3 +116,82 @@ document.getElementById('canvas').addEventListener('click', function(event) {
   }
 });
 
+// Function to get the corners coordinates of an oriented box
+function boxPoints(center, width, height, angle) {
+    const [cx, cy] = center;
+    const angleRad = angle * Math.PI / 180;
+
+    // Half-widths
+    const wHalf = width / 2;
+    const hHalf = height / 2;
+
+    // Pre-compute sine and cosine of the rotation angle
+    const cosTheta = Math.cos(angleRad);
+    const sinTheta = Math.sin(angleRad);
+
+    // Calculate the four corners
+    const corners = [
+        [-wHalf, -hHalf],
+        [wHalf, -hHalf],
+        [wHalf, hHalf],
+        [-wHalf, hHalf]
+    ];
+
+    // Rotate each corner and add the center offset
+    const rotatedCorners = corners.map(([x, y]) => [
+        cx + (x * cosTheta - y * sinTheta),
+        cy + (x * sinTheta + y * cosTheta)
+    ]);
+
+    return rotatedCorners;
+}
+
+// Function to get some attributes from a box
+function getBoxAtt(box) {
+  let centerX = parseFloat(box.getAttribute('cx'));
+  let centerY = parseFloat(box.getAttribute('cy'));
+  let width = parseFloat(box.getAttribute('width'));
+  let height = parseFloat(box.getAttribute('height'));
+  let angle = parseFloat(box.getAttribute('angle'));
+  return {'center': [centerX, centerY], 'width': width, 'height': height, 'angle': angle}
+}
+
+// Function to rotate a point around a center
+function rotatePoint(point, center, angleDegrees) {
+    const [x, y] = point;
+    const [centerX, centerY] = center;
+    const angleRadians = angleDegrees * Math.PI / 180;
+    const cos = Math.cos(angleRadians);
+    const sin = Math.sin(angleRadians);
+    
+    const translatedX = x - centerX;
+    const translatedY = y - centerY;
+    
+    const rotatedX = translatedX * cos - translatedY * sin;
+    const rotatedY = translatedX * sin + translatedY * cos;
+    
+    return [rotatedX + centerX, rotatedY + centerY];
+}
+
+// Function to calculate the center of a rectangle given two opposite corners
+function rotatedRecCenter(cornerA, cornerB) {
+  const [xa, ya] = cornerA;
+  const [xb, yb] = cornerB;
+
+  centerX = (xa + xb) / 2;
+  centerY = (ya + yb) / 2;
+
+  return [centerX, centerY]
+}
+
+// Function to calculate the width and height of a rotated rectangle
+// NOTE: it rotates back the rectangule to calculate height and width
+function getWidthHeight(center, cornerA, cornerB, angle) {
+  let [rotCornerAx, rotCornerAy] = rotatePoint(cornerA, center, -angle);
+  let [rotCornerBx, rotCornerBy] = rotatePoint(cornerB, center, -angle);
+
+  const width = Math.abs(rotCornerAx - rotCornerBx);
+  const height = Math.abs(rotCornerAy - rotCornerBy);
+
+  return [width, height];
+}

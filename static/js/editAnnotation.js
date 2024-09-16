@@ -1,96 +1,96 @@
-let isDragging = false;
-let initialX, initialY;
+let editmode = false;
 
-function addMouseListeners(annotation) {
-    annotation.addEventListener('mousedown', dragStart);
-    annotation.addEventListener('mousemove', drag);
-    annotation.addEventListener('mouseup', dragEnd);
-    annotation.addEventListener('mouseleave', dragEnd);
-}
+function toggleEditMode() {
+    editmode = !editmode;
+    const img = document.getElementById('img');
+    const canvas = document.getElementById('canvas');
+    
+    const editModeDiv = document.createElement('div');
+    editModeDiv.id = "edit-mode-msg";
+    editModeDiv.innerHTML = "<h3>Edit Mode - WARNING!</h3>";
 
-function removeMouseListeners(annotation) {
-    annotation.removeEventListener('mousedown', dragStart);
-    annotation.removeEventListener('mousemove', drag);
-    annotation.removeEventListener('mouseup', dragEnd);
-    annotation.removeEventListener('mouseleave', dragEnd);
-}
-
-function dragStart(event) {
-    initialX = event.clientX
-    initialY = event.clientY
-    isDragging = true;
-}
-
-function drag(event) {
-    if (isDragging) {
-      event.preventDefault();
-const dX = parseInt(event.clientX - initialX);
-      const dY = parseInt(event.clientY - initialY);
-      updateAnnotationPoints(event.srcElement, dX, dY);
-      removeMaskFill(event.srcElement);
-      initialX = event.clientX;
-      initialY = event.clientY;
+    if (editmode) {
+        img.style.opacity = 0.3;
+        canvas.insertAdjacentElement('beforebegin', editModeDiv);
+        enableEditModeForBoxes();
+    } else {
+        img.style.opacity = 1.0;
+        document.getElementById('edit-mode-msg').remove();
+        disableEditModeForBoxes();
+        updateAllEditedAnnotations();
     }
 }
 
-function dragEnd() {
-    isDragging = false;
+function enableEditModeForBoxes() {
+    const boxes = document.getElementsByClassName('box');
+    for (let box of boxes) {
+        box.classList.add("edit-mode");
+    }
 }
 
-function updateAnnotationPoints(annotation, dx, dy) {
-    const points = annotation.getAttribute("points").split(" ");
-    const updatedPoints = points.map(point => {
-        const [x, y] = point.split(",");
-        return `${parseInt(x) + dx},${parseInt(y) + dy}`;
-    });
-    annotation.setAttribute("points", updatedPoints.join(" "));
-
-    annotation.classList.add("edited-box");
+function disableEditModeForBoxes() {
+    const boxes = document.getElementsByClassName('box');
+    for (let box of boxes) {
+        box.classList.remove("edit-mode", "selected", "draggable", "edited");
+        removeDragListeners(box);
+        removeResizeHandles(box);
+    }
 }
 
-function removeMaskFill(box) {
-  //console.log(box.id, typeof box.id, box.id.replace('box','mask'));
-  mask = document.getElementById(box.id.replace('box','polygon'));
-  mask.setAttribute('fill-opacity', 0);
-}
-
-// Function to select an annotation
 function selectAnnotation(box) {
-  if (editmode) {
-    unselectBoxes();
-
-    // Select current box
-    box.classList.add("selected", "draggable");
-    addMouseListeners(box);
-  }
-}
-
-// Function to unselect all boxes
-function unselectBoxes() {
-    var prev_sel = document.getElementsByClassName("selected")[0];
-    if (prev_sel !== undefined) {
-      prev_sel.classList.remove("selected", "draggable");
-      removeMouseListeners(prev_sel);
+    if (editmode) {
+        unselectBoxes();
+        box.classList.add("selected", "draggable");
+        addDragListeners(box);
+        addResizeHandles(box);
     }
 }
 
-// Function to update all edited annotations in the DB 
-function updateAnnotations() {
-  var editedBoxes = Array.from(document.getElementsByClassName("edited-box"));
+function unselectBoxes() {
+    const prevSelected = document.getElementsByClassName("selected")[0];
+    if (prevSelected) {
+        prevSelected.classList.remove("selected", "draggable");
+        removeDragListeners(prevSelected);
+        removeResizeHandles(prevSelected);
+    }
+}
 
-  for (box of editedBoxes) {
-    var id_box = box.id.split("-")[1];
-    var pointsArray = box.getAttribute('points').trim().split(/\s+/);
-    var pointsStringList = "[" + pointsArray.map(point => `[${point}]`).join(", ") + "]";
+function updateAllEditedAnnotations() {
+    const editedBoxes = Array.from(document.getElementsByClassName("edited-box"));
+    for (let box of editedBoxes) {
+        updateAnnotationInDB(box);
+    }
+}
+
+function updateAnnotationInDB(box) {
+    const idBox = box.id.split("-")[1];
+    const boxAtt = getBoxAtt(box);
     
     $.ajax({
-	      type : "POST",
-	      url : `/update_annotation/${id_box}`,
-	      dataType: "json",
-	      data: pointsStringList,
-	      contentType: 'application/json;charset=UTF-8',
-	  });
-  }
+        type: "POST",
+        url: `/update_annotation/${idBox}`,
+        dataType: "json",
+        data: JSON.stringify(boxAtt),
+        contentType: 'application/json;charset=UTF-8',
+    });
 }
 
+function deleteSelectedAnnotation() {
+    if (editmode) {
+        const selectedAnnotation = document.getElementsByClassName("selected")[0];
+      
+        removeResizeHandles(selectedAnnotation);
+        
+        if (selectedAnnotation) {
+            const id = selectedAnnotation.id.split("-")[1];
+            document.getElementById(`polygon-${id}`).remove();
+            selectedAnnotation.remove();
+            $.ajax({
+                type: "GET",
+                url: `/delete_annotation/${id}`,
+            });
+        }
 
+        
+    }
+}

@@ -68,37 +68,16 @@ document.addEventListener('keydown', function(event) {
         document.getElementById('edit-mode-msg').remove();
 
         // Remove edit-mode and selected clases
-        boxes = document.getElementsByClassName('box');
-        for (box of boxes) {
-          box.classList.remove("edit-mode", "selected", "dragabble", "edited");
-          removeMouseListeners(box);
-        }
+        disableEditModeForBoxes();
 
         // Update all edited annotations in DB
-        updateAnnotations();
+        updateAllEditedAnnotations();
 
       }
     }
     
     if (event.key === 'd') {
-      if (editmode) {
-        annotation = document.getElementsByClassName("selected")[0]
-        id = annotation.id.split("-")[1]
-
-        // Delete mask
-        document.getElementById(`polygon-${id}`).remove();
-
-        // Delete box
-        annotation.remove();
-
-        // Delete annotation in db
-        $.ajax({
-            type : "GET",
-            url : `/delete_annotation/${id}`,
-            success: function () {
-            }
-        });
-      }
+        deleteSelectedAnnotation(); 
     }
 });
 

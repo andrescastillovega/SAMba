@@ -17,7 +17,7 @@ classes_table = db.t.classes
 annotations_table = db.t.annotations
 if imgs_table not in db.t: imgs_table.create(id=int, project=str, id_img=int, img_height=int, img_width=int, img_path=str, sam2_embedding_path=str, sam2_hres_feats_path=str, pk='id')
 if classes_table not in db.t: classes_table.create(id=int, project=str, annotation_class=str, class_id=int, color=str, pk='id')
-if annotations_table not in db.t: annotations_table.create(id=int, project=str, id_img=int, class_id=int, points=str, box=str, cx=float, cy=float, width=float, height=float, angle=float, pk='id') 
+if annotations_table not in db.t: annotations_table.create(id=int, project=str, id_img=int, class_id=int, points=str, cx=float, cy=float, width=float, height=float, angle=float, pk='id') 
 Image = imgs_table.dataclass()
 Class = classes_table.dataclass()
 Annotations = annotations_table.dataclass()
@@ -264,17 +264,16 @@ async def post(project:str, id_img:int, class_id:int, request:Request):
     box = cv2.boxPoints(min_area_rect)
 
     return json.dumps({"class_id": class_id, "color": color, "mask": contours[0].tolist(),
-                       "box": box.tolist(), "cx": center[0], "cy": center[1],
-                       "width": dims[0], "height": dims[1], "angle": rot_angle})
+                       "cx": center[0], "cy": center[1], "width": dims[0], "height": dims[1],
+                       "angle": rot_angle})
 
 @rt('/save_annotation/{project}/{id_img}/{class_id}')
 async def post(request:Request, project:str, id_img:int, class_id:int):
     data = await request.body()
     data = json.loads(data.decode('utf-8'))
     annotation = Annotations(project=project, id_img=id_img, class_id=class_id, 
-                             points=str(data["mask"]), box=str(data["box"]),
-                             cx=data["cx"], cy=data["cy"], width=data["width"],
-                             height=data["height"], angle=data["angle"])
+                             points=str(data["mask"]), cx=data["cx"], cy=data["cy"],
+                             width=data["width"], height=data["height"], angle=data["angle"])
     annotation = annotations_table.insert(annotation)
     data['id'] = annotation.id
     return data
@@ -290,15 +289,21 @@ def get(project:str, id_img:int):
                    FROM annotations
                    LEFT JOIN classes ON annotations.class_id = classes.class_id
                    WHERE annotations.project = '{project}' AND annotations.id_img = {id_img};""")
-    query = [ {"id": q['id'], "class_id": q['class_id'], "color": q['color'], "mask": json.loads(q['points']), "box": json.loads(q['box'])} for q in query ]
+    query = [ {"id": q['id'], "class_id": q['class_id'], "color": q['color'],
+               "mask": json.loads(q['points']), "cx": q["cx"], "cy": q["cy"], "height": q["height"],
+               "width": q["width"], "angle": q["angle"]} for q in query ]
     return Response(content=json.dumps(query), media_type='application/json', status_code=201)
 
 @rt('/update_annotation/{id_annotation}')
 async def post(request:Request, id_annotation:int):
     data = await request.body()
+    data = json.loads(data.decode('utf-8'))
     annotation = annotations_table.get(id_annotation)
-    annotation.box = str(data.decode('utf-8'))
-    annotation.points = "[[[]]]"
+    annotation.cx = data['center'][0]
+    annotation.cy = data['center'][1]
+    annotation.width = data['width']
+    annotation.height = data['height']
+    annotation.angle = data['angle']
     annotations_table.update(annotation)
     return None
     
