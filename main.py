@@ -198,7 +198,8 @@ def get(project_name:str, id_image:int):
             Script(src="../../static/js/prompt.js"),
             Script(src="../../static/js/editAnnotation.js"),
             Script(src="../../static/js/edit_mode/dragAnnotation.js"),
-            Script(src="../../static/js/edit_mode/resizeAnnotation.js")
+            Script(src="../../static/js/edit_mode/resizeAnnotation.js"),
+            Script(src="../../static/js/edit_mode/rotateAnnotation.js")
     )
     return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, js_scripts 
 

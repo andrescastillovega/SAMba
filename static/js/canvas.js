@@ -64,6 +64,7 @@ function drawAnnotation(data) {
     polygon.setAttribute('points', polygonString);
     polygon.classList.add('mask');
     polygon.setAttribute('fill', data["color"] + "65");
+    polygon.setAttribute('onclick', 'selectMask(this);');
 
     // Create annotation box element
     const box = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -76,7 +77,8 @@ function drawAnnotation(data) {
     box.setAttribute('angle', data['angle']);
     box.style.setProperty('--color', data['color']);
     box.classList.add('box');
-    box.setAttribute('onclick', 'selectAnnotation(this);');
+    box.setAttribute('onclick', 'selectBox(this);');
+    
 
     // Change style if box is edited
     if (!polygonString) {

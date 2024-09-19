@@ -34,15 +34,31 @@ function disableEditModeForBoxes() {
         box.classList.remove("edit-mode", "selected", "draggable", "edited");
         removeDragListeners(box);
         removeResizeHandles(box);
+        removeRotationHandle(box);
     }
 }
 
-function selectAnnotation(box) {
+function selectMask(mask) {
+    if (editmode) {
+        unselectBoxes();
+
+        let boxId = mask.id.replace("polygon", "box");
+        let box = document.getElementById(boxId);
+
+        box.classList.add("selected", "draggable");
+        addDragListeners(box);
+        addResizeHandles(box);
+        addRotationHandle(box);
+    }
+}
+
+function selectBox(box) {
     if (editmode) {
         unselectBoxes();
         box.classList.add("selected", "draggable");
         addDragListeners(box);
         addResizeHandles(box);
+        addRotationHandle(box);
     }
 }
 
@@ -52,6 +68,7 @@ function unselectBoxes() {
         prevSelected.classList.remove("selected", "draggable");
         removeDragListeners(prevSelected);
         removeResizeHandles(prevSelected);
+        removeRotationHandle(prevSelected);
     }
 }
 
@@ -80,6 +97,7 @@ function deleteSelectedAnnotation() {
         const selectedAnnotation = document.getElementsByClassName("selected")[0];
       
         removeResizeHandles(selectedAnnotation);
+        removeRotationHandle(selectedAnnotation);       
         
         if (selectedAnnotation) {
             const id = selectedAnnotation.id.split("-")[1];

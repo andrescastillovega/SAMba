@@ -30,6 +30,7 @@ function drag(event) {
     const dY = event.clientY - initialY;
     updateAnnotationPoints(selectedBox, dX, dY);
     updateResizeHandles(selectedBox);
+    updateRotationHandle(selectedBox);  // Add this line
     initialX = event.clientX;
     initialY = event.clientY;
 }
@@ -42,14 +43,14 @@ function updateAnnotationPoints(annotation, dx, dy) {
     const points = annotation.getAttribute("points").split(" ");
     const updatedPoints = points.map(point => {
         const [x, y] = point.split(",");
-        return `${parseInt(x) + dx},${parseInt(y) + dy}`;
+        return `${parseFloat(x) + dx},${parseFloat(y) + dy}`;
     });
     annotation.setAttribute("points", updatedPoints.join(" "));
     annotation.classList.add("edited-box");
 
-    // Update associated mask if exists
-    const mask = document.getElementById(annotation.id.replace('box', 'polygon'));
-    if (mask) {
-        mask.setAttribute('fill-opacity', 0);
-    }
+    // Update center coordinates
+    const cx = parseFloat(annotation.getAttribute("cx")) + dx;
+    const cy = parseFloat(annotation.getAttribute("cy")) + dy;
+    annotation.setAttribute("cx", cx);
+    annotation.setAttribute("cy", cy);
 }

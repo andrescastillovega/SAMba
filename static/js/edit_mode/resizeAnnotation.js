@@ -6,7 +6,6 @@ function addResizeHandles(box) {
     points.forEach((pos, index) => {
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 
         handle.setAttribute('cx', pos[0]);
         handle.setAttribute('cy', pos[1]);
@@ -20,16 +19,7 @@ function addResizeHandles(box) {
         
         handle.addEventListener('mousedown', handleResizeStart);
 
-        //text.setAttribute('x', pos[0]);
-        //text.setAttribute('y', pos[1]);
-        //text.setAttribute("font-size","7");
-        //text.setAttribute("text-anchor", "middle");
-        //text.setAttribute("dominant-baseline", "middle");
-        //text.setAttribute("fill", "black");
-        //text.textContent = index;
-
         g.appendChild(handle);  
-        //g.appendChild(text);
         box.parentNode.appendChild(g);
     });
 
@@ -39,12 +29,10 @@ function addResizeHandles(box) {
 
 function removeResizeHandles(box) {
     const handles = box.parentNode.querySelectorAll('.resize-handle');
-    handles.forEach(handle => handle.remove());
+    handles.forEach(handle => handle.parentNode.remove());
     document.removeEventListener('mousemove', handleResize);
     document.removeEventListener('mouseup', handleResizeEnd);
 }
-
-
 
 function handleResizeStart(event) {
     activeHandle = event.target;
@@ -52,45 +40,40 @@ function handleResizeStart(event) {
 }
 
 function handleResize(event) {
-  if (!activeHandle) return;
+    if (!activeHandle) return;
 
-  const box = document.querySelector('.selected');
-  if (!box) return;
+    const box = document.querySelector('.selected');
+    if (!box) return;
 
-  const canvas = document.getElementById('canvas');
-  const rect = canvas.getBoundingClientRect();
-  const newX = event.clientX - rect.left;
-  const newY = event.clientY - rect.top;
-  const activId = parseInt(activeHandle.getAttribute('data-handle-index'));
-  const opposId = (activId + 2) % 4;
+    const canvas = document.getElementById('canvas');
+    const rect = canvas.getBoundingClientRect();
+    const newX = event.clientX - rect.left;
+    const newY = event.clientY - rect.top;
+    const activId = parseInt(activeHandle.getAttribute('data-handle-index'));
+    const opposId = (activId + 2) % 4;
 
-  let points = box.getAttribute('points').split(' ').map(p => p.split(',').map(Number));
-  let angle = parseFloat(box.getAttribute('angle'));
-  let newCenter = rotatedRecCenter(points[opposId], [newX, newY]);
-  let [newWidth, newHeight] = getWidthHeight(newCenter, points[opposId], [newX, newY], angle);
-  let newBox = boxPoints(newCenter, newWidth, newHeight, angle);
-  
-  // Update the position of the dragged handle
-  activeHandle.setAttribute('cx', newX);
-  activeHandle.setAttribute('cy', newY);
+    let points = box.getAttribute('points').split(' ').map(p => p.split(',').map(Number));
+    let angle = parseFloat(box.getAttribute('angle'));
+    let newCenter = rotatedRecCenter(points[opposId], [newX, newY]);
+    let [newWidth, newHeight] = getWidthHeight(newCenter, points[opposId], [newX, newY], angle);
+    let newBox = boxPoints(newCenter, newWidth, newHeight, angle);
+    
+    // Update the box
+    box.setAttribute('points', newBox.map(p => p.join(',')).join(' '));
+    box.setAttribute('cx', newCenter[0]);
+    box.setAttribute('cy', newCenter[1]);
+    box.setAttribute('width', newWidth);
+    box.setAttribute('height', newHeight);
 
-  points[activId] = [newX, newY];
+    box.classList.add("edited-box");
 
-  // Update the box
-  box.setAttribute('points', newBox.map(p => p.join(',')).join(' '));
-  box.setAttribute('cx', newCenter[0]);
-  box.setAttribute('cy', newCenter[1]);
-  box.setAttribute('width', newWidth);
-  box.setAttribute('height', newHeight);
-
-  box.classList.add("edited-box");
-
-  // Update handle positions
-  updateResizeHandles(box);
+    // Update handle positions
+    updateResizeHandles(box);
+    updateRotationHandle(box);  // Add this line
 }
 
 function handleResizeEnd() {
-    activeHandle = null
+    activeHandle = null;
 }
 
 function updateResizeHandles(box) {
