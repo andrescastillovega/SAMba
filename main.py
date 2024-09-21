@@ -28,7 +28,8 @@ app, rt = fast_app(live=True, pico=True,
                          Link(rel="stylesheet", href="../../static/css/annotate.css", type="text/css"),
                          Link(rel="stylesheet", href="../../static/css/create_project.css", type="text/css"),
                          Script(src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"),
-                         Script(src="../../static/js/shortcuts.js")],)
+                         Script(src="../../static/js/shortcuts.js"),
+                         Script(src="../../static/js/modals.js")],)
 
 # Toasts config
 setup_toasts(app)
@@ -71,7 +72,7 @@ def get():
     
     upload_button = Button("Upload")
     upload_imgs = Form((project_section, class_section, upload_button), action="/extract_images", enctype="multipart/form-data", method="post", accept="application/zip")
-    return Title("SAM Image Annotator"), Main(upload_imgs, cls="container", style="width: 50%"), utils.Modal(), Script(src="static/js/create_project.js")
+    return Title("SAM Image Annotator"), Main(upload_imgs, cls="container", style="width: 50%"), utils.file_ext_modal() 
 
 @rt("/add_class")
 async def post(request:Request):
@@ -171,6 +172,8 @@ def get(project_name:str, id_image:int):
         next_button = A("Next", id="next-button", disabled=True, cls="button")
     else:
         next_button = A("Next", id="next-button", href=f"/change_img/{project_name}/{id_image}/next", cls="button")
+
+    shortcuts_button = A(id="shortcutsButton", cls="shortcuts-button")
     
     classes_title = Div(H3("Annotation classes"), cls="centered-div")
     classes_list = []
@@ -179,18 +182,10 @@ def get(project_name:str, id_image:int):
             Div(Kbd(f"{annotation_class['class_id']}"), B(f"{annotation_class['annotation_class']}"), cls="class-label", id=f"class-{annotation_class['class_id']}", color=f"{annotation_class['color']}")
         )
     classes_div = Div(Div(tuple(classes_list), cls="grid"), cls="container")
-    other_ks_title = Div(H3("Keyboard shorcuts"), cls="centered-div")
-    other_ks = Div(
-                    Div(
-                        (Div(Kbd("q"), B("Previous image")),
-                        Div(Kbd("w"), B("Next image")),
-                        Div(Kbd("i"), B("Infer class")),
-                        Div(Kbd("c"), B("Clear prompt points")),
-                        Div(Kbd("e"), B("Edit mode")),
-                        Div(Kbd("d"), B("Delete annotation (only edit mode)"))),
-                        cls="grid")
-                    , cls="container")
-    footer = Footer((classes_title, classes_div, other_ks_title, other_ks))
+
+    footer = Footer((classes_title, classes_div))
+
+    shortcuts_section = Div(Div(Div(), Div(), Div(), Div(shortcuts_button, cls="centered-div"), cls="grid"), cls="container")
 
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
     js_scripts = (
@@ -201,7 +196,7 @@ def get(project_name:str, id_image:int):
             Script(src="../../static/js/edit_mode/resizeAnnotation.js"),
             Script(src="../../static/js/edit_mode/rotateAnnotation.js")
     )
-    return Title("SAM Image Annotator"), Main(properties, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, js_scripts 
+    return Title("SAM Image Annotator"), Main(properties, shortcuts_section, buttons, get_img(img[0]['img_path'], img[0]['img_width'], img[0]['img_height']), id="main"), footer, utils.shortcuts_modal(), js_scripts 
 
 @rt("/change_img/{project_name}/{id_image}/{action}")
 def get(project_name:str, id_image: int, action:str):

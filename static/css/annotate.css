@@ -14,6 +14,46 @@ a.button:hover {
     background-color: #0056b3;
 }
 
+.shortcuts-button {
+    display: flex;
+    flex-direction: row-reverse; /* Change to row-reverse to have text on the left */
+    align-items: center;
+    text-decoration: none;
+    color: #333;
+    font-size: 14px; /* Increased from 7px to make text 2X larger */
+    gap: 10px; /* Add space between the text and the button */
+}
+
+.shortcuts-button::before {
+    content: "?";
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: transparent;
+    border: 2px solid #007bff;
+    color: #007bff;
+    font-size: 12px;
+    font-weight: bold;
+    transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.shortcuts-button:hover::before {
+    border-color: #0056b3;
+    color: #0056b3;
+}
+
+.shortcuts-button::after {
+    content: "Keyboard Shortcuts";
+    white-space: nowrap; /* Prevent text from wrapping */
+}
+
+/* Add hover effect for the text */
+.shortcuts-button:hover {
+    color: #0056b3;
+}
 .centered-div {
   display: flex;
   justify-content: center; /* Center horizontally */
