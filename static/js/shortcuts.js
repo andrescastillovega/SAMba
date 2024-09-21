@@ -50,7 +50,7 @@ document.addEventListener('keydown', function(event) {
       
       const editModeDiv = document.createElement('div');
       editModeDiv.id = "edit-mode-msg";
-      editModeDiv.innerHTML = "<h3>Edit Mode - WARNING!</h3>";
+      editModeDiv.innerHTML = "<h3 class='edit-mode-text'>Edit Mode - WARNING!</h3>";
 
       if (editmode) {
         // Add edit-mode msg

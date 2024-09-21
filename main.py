@@ -174,7 +174,9 @@ def get(project_name:str, id_image:int):
         next_button = A("Next", id="next-button", href=f"/change_img/{project_name}/{id_image}/next", cls="button")
 
     shortcuts_button = A(id="shortcutsButton", cls="shortcuts-button")
-    
+    export_button = A(Span("file_download", cls="material-symbols-outlined"), "Export annotations", 
+                      href=f"/export/{project_name}", cls="export-button")
+        
     classes_title = Div(H3("Annotation classes"), cls="centered-div")
     classes_list = []
     for annotation_class in annotation_classes:
@@ -185,7 +187,7 @@ def get(project_name:str, id_image:int):
 
     footer = Footer((classes_title, classes_div))
 
-    shortcuts_section = Div(Div(Div(), Div(), Div(), Div(shortcuts_button, cls="centered-div"), cls="grid"), cls="container")
+    shortcuts_section = Div(Div(Div(export_button, cls="centered-div"), Div(), Div(), Div(shortcuts_button, cls="centered-div"), cls="grid"), cls="container")
 
     buttons = Div(Div(Div(prev_button, cls="centered-div"), Div(current_img, cls="centered-div"), Div(next_button, cls="centered-div"), cls="grid"), cls="container")
     js_scripts = (
@@ -303,6 +305,135 @@ async def post(request:Request, id_annotation:int):
     annotations_table.update(annotation)
     return None
     
+
+
+
+
+@rt("/export/{project_name:str}")
+def get(project_name: str):
+    classes = db.q(f"SELECT * FROM classes WHERE project = '{project_name}' ORDER BY class_id ASC")
+    
+    export_form = Form(
+        H2("Export Annotations"),
+        Select(
+            Option("YOLO", value="yolo"),
+            Option("COCO", value="coco"),
+            Option("Pascal VOC", value="pascal_voc"),
+            name="format",
+            id="export-format"
+        ),
+        Button("Export", type="submit"),
+        action=f"/generate_export/{project_name}",
+        method="post"
+    )
+    
+    return Title("Export Annotations"), Main(export_form, cls="container", style="width: 50%")
+
+@rt("/generate_export/{project_name:str}")
+async def post(request: Request, project_name: str):
+    form = await request.form()
+    export_format = form['format']
+    
+    annotations = db.q(f"""
+        SELECT a.*, c.annotation_class, i.img_path, i.img_width, i.img_height
+        FROM annotations a
+        JOIN classes c ON a.class_id = c.class_id AND a.project = c.project
+        JOIN images i ON a.id_img = i.id_img AND a.project = i.project
+        WHERE a.project = '{project_name}'
+    """)
+    
+    if export_format == 'yolo':
+        content = generate_yolo_format(annotations)
+    elif export_format == 'coco':
+        content = generate_coco_format(annotations)
+    elif export_format == 'pascal_voc':
+        content = generate_pascal_voc_format(annotations)
+    else:
+        return "Invalid format", 400
+    
+    return Response(
+        content=content,
+        media_type='text/plain',
+        headers={
+            'Content-Disposition': f'attachment; filename="{project_name}_annotations_{export_format}.txt"'
+        }
+    )
+
+def generate_yolo_format(annotations):
+    yolo_annotations = []
+    for ann in annotations:
+        class_id = ann['class_id'] - 1  # YOLO uses 0-indexed class IDs
+        x_center = ann['cx'] / ann['img_width']
+        y_center = ann['cy'] / ann['img_height']
+        width = ann['width'] / ann['img_width']
+        height = ann['height'] / ann['img_height']
+        yolo_annotations.append(f"{class_id} {x_center} {y_center} {width} {height}")
+    return "\n".join(yolo_annotations)
+
+def generate_coco_format(annotations):
+    coco_data = {
+        "images": [],
+        "annotations": [],
+        "categories": []
+    }
+    image_id_map = {}
+    for ann in annotations:
+        if ann['id_img'] not in image_id_map:
+            image_id_map[ann['id_img']] = len(coco_data["images"])
+            coco_data["images"].append({
+                "id": image_id_map[ann['id_img']],
+                "file_name": ann['img_path'],
+                "width": ann['img_width'],
+                "height": ann['img_height']
+            })
+        coco_data["annotations"].append({
+            "id": ann['id'],
+            "image_id": image_id_map[ann['id_img']],
+            "category_id": ann['class_id'],
+            "bbox": [ann['cx'] - ann['width']/2, ann['cy'] - ann['height']/2, ann['width'], ann['height']],
+            "area": ann['width'] * ann['height'],
+            "iscrowd": 0
+        })
+    coco_data["categories"] = [{"id": ann['class_id'], "name": ann['annotation_class']} for ann in annotations]
+    return json.dumps(coco_data, indent=2)
+
+def generate_pascal_voc_format(annotations):
+    voc_annotations = []
+    for ann in annotations:
+        voc_ann = f"""
+<annotation>
+    <folder>{ann['project']}</folder>
+    <filename>{ann['img_path'].split('/')[-1]}</filename>
+    <path>{ann['img_path']}</path>
+    <source>
+        <database>Unknown</database>
+    </source>
+    <size>
+        <width>{ann['img_width']}</width>
+        <height>{ann['img_height']}</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>{ann['annotation_class']}</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>{max(0, int(ann['cx'] - ann['width']/2))}</xmin>
+            <ymin>{max(0, int(ann['cy'] - ann['height']/2))}</ymin>
+            <xmax>{min(ann['img_width'], int(ann['cx'] + ann['width']/2))}</xmax>
+            <ymax>{min(ann['img_height'], int(ann['cy'] + ann['height']/2))}</ymax>
+        </bndbox>
+    </object>
+</annotation>
+"""
+        voc_annotations.append(voc_ann)
+    return "\n".join(voc_annotations)
+
+
+
+
 
 
 serve()
