@@ -31,6 +31,18 @@ APP_NAME = "drone-traffic-sam3"
 
 app = modal.App(APP_NAME)
 
+HF_SECRET = modal.Secret.from_name("huggingface")
+HF_CACHE_DIR = "/root/.cache/huggingface"
+
+
+def _prefetch_sam3_weights() -> None:
+    """Bake SAM 3 checkpoint + config into the image so cold starts skip the HF download."""
+    from huggingface_hub import hf_hub_download
+
+    hf_hub_download(repo_id="facebook/sam3", filename="config.json")
+    hf_hub_download(repo_id="facebook/sam3", filename="sam3.pt")
+
+
 image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("libgl1", "libglib2.0-0", "git")
@@ -55,9 +67,9 @@ image = (
         "zstandard",
     )
     .pip_install("sam3 @ git+https://github.com/facebookresearch/sam3.git")
+    .env({"HF_HOME": HF_CACHE_DIR, "HF_HUB_ENABLE_HF_TRANSFER": "0"})
+    .run_function(_prefetch_sam3_weights, secrets=[HF_SECRET])
 )
-
-HF_SECRET = modal.Secret.from_name("huggingface")
 
 
 def _mask_to_bbox(mask) -> dict[str, Any] | None:
