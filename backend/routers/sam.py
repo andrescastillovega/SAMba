@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from .. import models, schemas
 from ..db import get_session
+from ..paths import frame_abspath
 from ..services.dedup import find_duplicate
 from ..services.sam_image import predict_from_points, predict_from_text
 
@@ -35,7 +34,7 @@ def sam_click(
     frame = _get_frame(session, project_id, idx)
     points = [(p.x, p.y) for p in payload.points]
     labels = [p.label for p in payload.points]
-    bbox, score = predict_from_points(Path(frame.path), points, labels, payload.box)
+    bbox, score = predict_from_points(frame_abspath(frame), points, labels, payload.box)
     if not bbox:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "empty mask")
     return schemas.SamClickResponse(
@@ -81,7 +80,7 @@ def text_detect(
             session.refresh(cls)
         class_id = cls.id
 
-    detections = predict_from_text(Path(frame.path), payload.prompt)
+    detections = predict_from_text(frame_abspath(frame), payload.prompt)
     created: list[models.Annotation] = []
     for det in detections:
         bbox = (det["bbox_x1"], det["bbox_y1"], det["bbox_x2"], det["bbox_y2"])

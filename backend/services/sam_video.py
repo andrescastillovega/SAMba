@@ -15,13 +15,13 @@ corrective frame using a fresh prompt.
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
 from threading import Lock
 
 from sqlmodel import Session, select
 
 from .. import models, schemas
 from ..config import MODAL_SAM3_APP_NAME
+from ..paths import frame_abspath
 
 _lock = Lock()
 
@@ -190,7 +190,7 @@ def propagate(
         return 0
 
     base_idx = payload.start_frame
-    frame_bytes = [Path(f.path).read_bytes() for f in frames]
+    frame_bytes = [frame_abspath(f).read_bytes() for f in frames]
     w, h = frames[0].width, frames[0].height
 
     prompts, track_to_class = _build_prompts_from_payload(payload.objects, base_idx)
@@ -279,7 +279,7 @@ def correct_track(
     if not frames:
         return 0
 
-    frame_bytes = [Path(f.path).read_bytes() for f in frames]
+    frame_bytes = [frame_abspath(f).read_bytes() for f in frames]
     w, h = frames[0].width, frames[0].height
 
     prompts = [

@@ -9,6 +9,7 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from .. import models
+from ..paths import frame_abspath
 
 
 def _load(session: Session, project_id: int):
@@ -57,7 +58,7 @@ def export_yolo(session: Session, project_id: int) -> bytes:
             stem = Path(frame.path).stem
             zf.writestr(f"labels/{stem}.txt", "\n".join(lines))
             try:
-                zf.write(frame.path, f"images/{Path(frame.path).name}")
+                zf.write(frame_abspath(frame), f"images/{Path(frame.path).name}")
             except OSError:
                 pass
     return buf.getvalue()
@@ -99,7 +100,7 @@ def export_coco(session: Session, project_id: int) -> bytes:
         zf.writestr("annotations.json", json.dumps(coco, indent=2))
         for f in frames:
             try:
-                zf.write(f.path, f"images/{Path(f.path).name}")
+                zf.write(frame_abspath(f), f"images/{Path(f.path).name}")
             except OSError:
                 pass
     return buf.getvalue()
@@ -131,7 +132,7 @@ def export_voc(session: Session, project_id: int) -> bytes:
             xml = ET.tostring(root, encoding="unicode")
             zf.writestr(f"Annotations/{Path(frame.path).stem}.xml", xml)
             try:
-                zf.write(frame.path, f"JPEGImages/{Path(frame.path).name}")
+                zf.write(frame_abspath(frame), f"JPEGImages/{Path(frame.path).name}")
             except OSError:
                 pass
     return buf.getvalue()

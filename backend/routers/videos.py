@@ -31,7 +31,7 @@ async def upload_video(
     video_path.write_bytes(data)
 
     meta = probe_video(video_path)
-    project.video_path = str(video_path)
+    project.video_path = str(video_path.relative_to(PROJECTS_DIR))
     project.fps = meta.get("fps")
     project.width = meta.get("width")
     project.height = meta.get("height")
@@ -42,7 +42,7 @@ async def upload_video(
             models.Frame(
                 project_id=project_id,
                 idx=idx,
-                path=str(path),
+                path=str(path.relative_to(PROJECTS_DIR)),
                 width=w,
                 height=h,
             )
@@ -72,15 +72,21 @@ def ingest_folder(
     if not src.is_dir():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"not a directory: {src}")
 
+    frames_dir = PROJECTS_DIR / str(project_id) / "frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+
     paths = sorted(p for p in src.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
     for idx, path in enumerate(paths):
         with Image.open(path) as img:
             w, h = img.size
+        link = frames_dir / path.name
+        if not link.exists():
+            link.symlink_to(path)
         session.add(
             models.Frame(
                 project_id=project_id,
                 idx=idx,
-                path=str(path),
+                path=str(link.relative_to(PROJECTS_DIR)),
                 width=w,
                 height=h,
             )

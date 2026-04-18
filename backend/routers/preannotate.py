@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from .. import models, schemas
 from ..db import get_session
+from ..paths import frame_abspath
 from ..services.dedup import find_duplicate
 from ..services.yolo_sahi import sliced_predict
 
@@ -44,7 +43,7 @@ def preannotate(project_id: int, idx: int, session: Session = Depends(get_sessio
     if not frame:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "frame not found")
 
-    detections = sliced_predict(Path(frame.path))
+    detections = sliced_predict(frame_abspath(frame))
 
     created: list[models.Annotation] = []
     for det in detections:

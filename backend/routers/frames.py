@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 
 from .. import models, schemas
 from ..db import get_session
+from ..paths import frame_abspath
 
 router = APIRouter(prefix="/projects/{project_id}/frames", tags=["frames"])
 
@@ -35,4 +36,4 @@ def _get_frame(session: Session, project_id: int, idx: int) -> models.Frame:
 @router.get("/{idx}/image")
 def get_frame_image(project_id: int, idx: int, session: Session = Depends(get_session)):
     frame = _get_frame(session, project_id, idx)
-    return FileResponse(frame.path)
+    return FileResponse(frame_abspath(frame))
