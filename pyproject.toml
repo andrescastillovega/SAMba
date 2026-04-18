@@ -1,0 +1,23 @@
+[project]
+name = "samba"
+version = "2.0.0"
+description = "SAMba v2 — video annotator powered by SAM 3 + SAHI + YOLO. Produces YOLO/COCO/VOC datasets from drone footage."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "modal>=0.73",
+    "sahi>=0.11.36",
+    "ultralytics>=8.4.37",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.12",
+    "sqlmodel>=0.0.22",
+    "opencv-python-headless>=4.10",
+    "imageio-ffmpeg>=0.5",
+    "pillow>=11",
+    "numpy>=1.26,<2",
+    "pycocotools>=2.0.8",
+    "torch>=2.7",
+    "huggingface-hub>=0.26",
+    "einops>=0.8",
+]

@@ -1,7 +1,32 @@
-__pycache__
-db
-scripts/__pycache__
-scripts/sam2_hiera_large.pt
-static/embeddings
-static/high_res_feats
-static/images
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# uv / venv
+.venv/
+
+# Runtime data + weights
+data/
+weights/
+*.pt
+
+# Frontend build output
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS / editor junk
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Secrets
+.env
+.env.local
+*.pem
+*.key
