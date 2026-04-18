@@ -1,6 +1,12 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClass, deleteClass, updateClass, type Klass } from '../api/client';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createClass,
+  deleteClass,
+  listAnnotations,
+  updateClass,
+  type Klass,
+} from '../api/client';
 import { useCanvas } from '../state/canvasStore';
 
 const DEFAULT_COLORS = [
@@ -28,9 +34,20 @@ export default function ClassPalette({
   const toggleClassVisibility = useCanvas((s) => s.toggleClassVisibility);
   const hideAllClasses = useCanvas((s) => s.hideAllClasses);
   const showAllClasses = useCanvas((s) => s.showAllClasses);
+  const frameIdx = useCanvas((s) => s.frameIdx);
+  const { data: frameAnnotations = [] } = useQuery({
+    queryKey: ['annotations', projectId, frameIdx],
+    queryFn: () => listAnnotations(projectId, frameIdx),
+  });
+  const frameCountByClass = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const a of frameAnnotations) m.set(a.class_id, (m.get(a.class_id) ?? 0) + 1);
+    return m;
+  }, [frameAnnotations]);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Klass | null>(null);
   const allHidden = classes.length > 0 && hiddenClassIds.length >= classes.length;
 
   const invalidateAfterClassChange = () => {
@@ -73,6 +90,7 @@ export default function ClassPalette({
     mutationFn: (id: number) => deleteClass(projectId, id),
     onSuccess: (_, id) => {
       if (activeClassId === id) setActiveClassId(null);
+      setDeleteTarget(null);
       invalidateAfterClassChange();
     },
   });
@@ -82,14 +100,8 @@ export default function ClassPalette({
     setEditingName(c.name);
   };
 
-  const confirmDelete = (c: Klass) => {
-    const ok = window.confirm(
-      `Delete class "${c.name}"?\n\nAll boxes and tracks with this label will also be removed.`,
-    );
-    if (ok) remove.mutate(c.id);
-  };
-
   return (
+    <>
     <div className="border-b border-slate-800 p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -112,7 +124,7 @@ export default function ClassPalette({
           const isEditing = editingId === c.id;
           const isHidden = hiddenClassIds.includes(c.id);
           return (
-            <li key={c.id} className="group flex items-center gap-1">
+            <li key={c.id} className="flex items-center gap-1">
               {isEditing ? (
                 <form
                   className="flex flex-1 items-center gap-1"
@@ -170,8 +182,11 @@ export default function ClassPalette({
                     title="Click to select, double-click to rename"
                   >
                     <span className="truncate">{c.name}</span>
-                    <span className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-400">
-                      {c.annotation_count}
+                    <span
+                      className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-400"
+                      title="annotations on this frame / total in project"
+                    >
+                      {frameCountByClass.get(c.id) ?? 0}/{c.annotation_count}
                     </span>
                   </button>
                   <button
@@ -185,11 +200,12 @@ export default function ClassPalette({
                     {isHidden ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                   <button
-                    onClick={() => confirmDelete(c)}
-                    className="rounded px-1 text-xs text-slate-400 opacity-0 hover:bg-slate-800 hover:text-rose-400 group-hover:opacity-100"
+                    onClick={() => setDeleteTarget(c)}
+                    className="shrink-0 rounded px-1 py-1 text-slate-300 hover:bg-slate-800 hover:text-rose-400"
                     title="Delete class (and its boxes)"
+                    aria-label="Delete class"
                   >
-                    ✕
+                    <TrashIcon />
                   </button>
                 </>
               )}
@@ -218,6 +234,42 @@ export default function ClassPalette({
         </button>
       </form>
     </div>
+    {deleteTarget && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm">
+        <div className="flex min-w-[320px] max-w-md flex-col gap-4 rounded-lg border border-slate-700 bg-slate-900 px-8 py-6 shadow-2xl">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-400">
+              <TrashIcon />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-slate-100">
+                Delete class "{deleteTarget.name}"?
+              </div>
+              <div className="mt-1 text-xs text-slate-400">
+                All boxes and tracks with this label will also be removed.
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setDeleteTarget(null)}
+              disabled={remove.isPending}
+              className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => remove.mutate(deleteTarget.id)}
+              disabled={remove.isPending}
+              className="rounded bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+            >
+              {remove.isPending ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -255,6 +307,27 @@ function EyeOffIcon() {
       <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c6.5 0 10 7 10 7a19.63 19.63 0 0 1-3.17 4.19" />
       <path d="M1 1l22 22" />
       <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
     </svg>
   );
 }

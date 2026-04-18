@@ -1,17 +1,15 @@
 import { create } from 'zustand';
 import type { SamPoint } from '../api/client';
 
-type ToolMode = 'point' | 'select';
-
 type CanvasState = {
   frameIdx: number;
   setFrameIdx: (idx: number) => void;
 
-  tool: ToolMode;
-  setTool: (t: ToolMode) => void;
-
   activeClassId: number | null;
   setActiveClassId: (id: number | null) => void;
+
+  interactiveMode: boolean;
+  setInteractiveMode: (v: boolean) => void;
 
   pendingPoints: SamPoint[];
   addPoint: (p: SamPoint) => void;
@@ -39,11 +37,11 @@ export const useCanvas = create<CanvasState>((set) => ({
   frameIdx: 0,
   setFrameIdx: (idx) => set({ frameIdx: idx, pendingPoints: [], previewMask: null }),
 
-  tool: 'point',
-  setTool: (t) => set({ tool: t }),
-
   activeClassId: null,
   setActiveClassId: (id) => set({ activeClassId: id }),
+
+  interactiveMode: false,
+  setInteractiveMode: (v) => set({ interactiveMode: v, pendingPoints: [], previewMask: null }),
 
   pendingPoints: [],
   addPoint: (p) => set((s) => ({ pendingPoints: [...s.pendingPoints, p] })),

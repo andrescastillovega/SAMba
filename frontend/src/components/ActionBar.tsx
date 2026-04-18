@@ -6,8 +6,8 @@ import { useToasts } from '../state/toastStore';
 
 export default function ActionBar({ projectId, frameIdx }: { projectId: number; frameIdx: number }) {
   const qc = useQueryClient();
-  const tool = useCanvas((s) => s.tool);
-  const setTool = useCanvas((s) => s.setTool);
+  const interactiveMode = useCanvas((s) => s.interactiveMode);
+  const setInteractiveMode = useCanvas((s) => s.setInteractiveMode);
   const pushToast = useToasts((s) => s.push);
   const [propN, setPropN] = useState(30);
   const [textPrompt, setTextPrompt] = useState('');
@@ -77,20 +77,18 @@ export default function ActionBar({ projectId, frameIdx }: { projectId: number; 
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/60 px-4 py-2 text-sm">
-      <div className="flex gap-1 rounded bg-slate-800 p-1">
-        {([
-          ['point', 'Point'],
-          ['select', 'Select Annotation'],
-        ] as const).map(([t, label]) => (
-          <button
-            key={t}
-            onClick={() => setTool(t)}
-            className={`rounded px-2 py-1 text-xs ${tool === t ? 'bg-sky-600' : 'hover:bg-slate-700'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <button
+        onClick={() => setInteractiveMode(!interactiveMode)}
+        aria-pressed={interactiveMode}
+        className={`rounded px-3 py-1 text-xs font-medium ring-1 ring-slate-700 ${
+          interactiveMode
+            ? 'bg-sky-600 text-white ring-sky-500 shadow-inner'
+            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+        }`}
+        title="Toggle SAM point inference on left-click"
+      >
+        Interactive selection
+      </button>
 
       <button
         onClick={() => preannotate.mutate()}

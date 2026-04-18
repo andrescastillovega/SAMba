@@ -23,14 +23,28 @@ export default function AnnotatorCanvas({
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [rendered, setRendered] = useState({ w: 0, h: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  zoomRef.current = zoom;
+  panRef.current = pan;
+  const panStateRef = useRef<{
+    startX: number;
+    startY: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
+  const didPanRef = useRef(false);
   const [menu, setMenu] = useState<
     { x: number; y: number; annotationId: number } | null
   >(null);
   const qc = useQueryClient();
 
-  const tool = useCanvas((s) => s.tool);
+  const interactiveMode = useCanvas((s) => s.interactiveMode);
   const pendingPoints = useCanvas((s) => s.pendingPoints);
   const addPoint = useCanvas((s) => s.addPoint);
   const clearPoints = useCanvas((s) => s.clearPoints);
@@ -146,26 +160,17 @@ export default function AnnotatorCanvas({
   };
 
   const onClick = (e: React.MouseEvent) => {
+    if (didPanRef.current) {
+      didPanRef.current = false;
+      return;
+    }
     if (e.shiftKey) {
       const hit = pickAnnotation(visibleAnnotations, toImageCoords(e));
       if (hit) del.mutate(hit.id);
       return;
     }
-    if (tool === 'select') {
-      const hit = pickAnnotation(visibleAnnotations, toImageCoords(e));
-      if (hit) {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setMenu({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-          annotationId: hit.id,
-        });
-      } else {
-        setMenu(null);
-      }
-      return;
-    }
-    if (tool !== 'point') return;
+    setMenu(null);
+    if (!interactiveMode && !(correctionMode && selectedTrackId != null)) return;
     const { x, y } = toImageCoords(e);
     const label: 0 | 1 = e.ctrlKey || e.metaKey ? 0 : 1;
     const point: SamPoint = { x, y, label };
@@ -175,6 +180,24 @@ export default function AnnotatorCanvas({
     }
     addPoint(point);
     runSam.mutate({ points: [...pendingPoints, point] });
+  };
+
+  const onContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const hit = pickAnnotation(visibleAnnotations, toImageCoords(e));
+    if (!hit) {
+      setMenu(null);
+      return;
+    }
+    const outer = outerRef.current;
+    const rect = outer
+      ? outer.getBoundingClientRect()
+      : (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenu({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      annotationId: hit.id,
+    });
   };
 
 
@@ -244,28 +267,141 @@ export default function AnnotatorCanvas({
 
   }, [visibleAnnotations, previewMask, pendingPoints, rendered, imgSize, classes]);
 
+  const resetView = () => {
+    const outer = outerRef.current;
+    if (!outer || !rendered.w) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+    setZoom(1);
+    setPan({
+      x: (outer.clientWidth - rendered.w) / 2,
+      y: (outer.clientHeight - rendered.h) / 2,
+    });
+  };
+
+  const zoomAt = (cx: number, cy: number, factor: number) => {
+    const z = zoomRef.current;
+    const p = panRef.current;
+    const next = Math.max(1, Math.min(10, z * factor));
+    if (next === z) return;
+    const newPan = {
+      x: cx - ((cx - p.x) / z) * next,
+      y: cy - ((cy - p.y) / z) * next,
+    };
+    zoomRef.current = next;
+    panRef.current = newPan;
+    setZoom(next);
+    setPan(newPan);
+  };
+
+  const zoomAtCenter = (factor: number) => {
+    const outer = outerRef.current;
+    const cx = outer ? outer.clientWidth / 2 : 0;
+    const cy = outer ? outer.clientHeight / 2 : 0;
+    zoomAt(cx, cy, factor);
+  };
+
+  useEffect(() => {
+    resetView();
+  }, [rendered.w, rendered.h, frameIdx]);
+
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      zoomAt(e.clientX - rect.left, e.clientY - rect.top, Math.exp(-e.deltaY * 0.0015));
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    const panButton = e.button === 1 || (e.button === 0 && (e.ctrlKey || e.metaKey));
+    if (!panButton) return;
+    if (e.button === 1) e.preventDefault();
+    panStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      panX: panRef.current.x,
+      panY: panRef.current.y,
+    };
+    didPanRef.current = false;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const st = panStateRef.current;
+    if (!st) return;
+    const dx = e.clientX - st.startX;
+    const dy = e.clientY - st.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 3) didPanRef.current = true;
+    setPan({ x: st.panX + dx, y: st.panY + dy });
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!panStateRef.current) return;
+    panStateRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // pointer capture may already be released
+    }
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inField =
+        target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
       if (e.key === 'Enter' && previewMask && activeClassId != null) {
         commitAnn.mutate();
       } else if (e.key === 'Escape') {
         clearPoints();
         setMenu(null);
+      } else if (!inField && (e.key === '+' || e.key === '=')) {
+        zoomAtCenter(1.2);
+      } else if (!inField && e.key === '-') {
+        zoomAtCenter(1 / 1.2);
+      } else if (!inField && e.key === '0') {
+        resetView();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [previewMask, activeClassId]);
+  }, [previewMask, activeClassId, rendered.w, rendered.h]);
 
   useEffect(() => {
     setMenu(null);
-  }, [tool, frameIdx]);
+  }, [frameIdx]);
 
-  const cursor = tool === 'point' ? 'crosshair' : tool === 'select' ? 'pointer' : 'default';
+  const cursor = panStateRef.current
+    ? 'grabbing'
+    : interactiveMode || (correctionMode && selectedTrackId != null)
+    ? 'crosshair'
+    : 'default';
+
+  const panCursor = cursor;
 
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="relative" style={{ maxWidth: '100%', maxHeight: '100%' }}>
+    <div
+      ref={outerRef}
+      className="relative h-full w-full overflow-hidden"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerUp}
+    >
+      <div
+        className="absolute left-0 top-0"
+        style={{
+          transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+          transformOrigin: '0 0',
+        }}
+      >
         <img
           ref={imgRef}
           src={frameImageUrl(projectId, frameIdx)}
@@ -276,16 +412,47 @@ export default function AnnotatorCanvas({
             setImgSize({ w: el.naturalWidth, h: el.naturalHeight });
             setRendered({ w: el.clientWidth, h: el.clientHeight });
           }}
-          className="max-h-[calc(100vh-220px)] max-w-[calc(100vw-340px)] select-none"
-          style={{ cursor }}
+          className="block max-h-[calc(100vh-220px)] max-w-[calc(100vw-340px)] select-none"
+          style={{ cursor: panCursor }}
         />
         <canvas
           ref={overlayRef}
           onClick={onClick}
+          onContextMenu={onContextMenu}
           className="absolute inset-0"
-          style={{ cursor }}
+          style={{ cursor: panCursor }}
         />
-        {previewMask && (
+      </div>
+      <div className="pointer-events-auto absolute right-2 top-2 flex items-center gap-0.5 rounded border border-slate-700 bg-slate-900/80 px-1 py-1 text-xs backdrop-blur-sm">
+        <button
+          onClick={() => zoomAtCenter(1 / 1.2)}
+          className="rounded px-2 py-0.5 text-slate-300 hover:bg-slate-800"
+          title="Zoom out (-)"
+          aria-label="Zoom out"
+        >
+          −
+        </button>
+        <span className="w-12 text-center font-mono text-slate-300">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          onClick={() => zoomAtCenter(1.2)}
+          className="rounded px-2 py-0.5 text-slate-300 hover:bg-slate-800"
+          title="Zoom in (+)"
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <button
+          onClick={resetView}
+          className="ml-0.5 rounded px-2 py-0.5 text-slate-300 hover:bg-slate-800"
+          title="Reset view (0)"
+          aria-label="Reset view"
+        >
+          ⟲
+        </button>
+      </div>
+      {previewMask && (
           <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
             <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-slate-700 bg-slate-900/95 px-4 py-2 text-sm shadow-lg">
               {activeClassId == null ? (
@@ -368,7 +535,6 @@ export default function AnnotatorCanvas({
             </button>
           </div>
         )}
-      </div>
     </div>
   );
 }
