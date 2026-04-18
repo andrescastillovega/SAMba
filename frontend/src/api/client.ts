@@ -83,6 +83,13 @@ export const updateAnnotation = (
 export const preannotateFrame = (projectId: number, frameIdx: number) =>
   api.post(`projects/${projectId}/frames/${frameIdx}/preannotate`).json<Annotation[]>();
 
+export const refineToRotated = (projectId: number, frameIdx: number) =>
+  api
+    .post(`projects/${projectId}/frames/${frameIdx}/refine_to_rotated`, {
+      timeout: 10 * 60 * 1000,
+    })
+    .json<Annotation[]>();
+
 export const samClick = (
   projectId: number,
   frameIdx: number,

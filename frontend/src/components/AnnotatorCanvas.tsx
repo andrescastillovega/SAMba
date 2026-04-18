@@ -200,8 +200,25 @@ export default function AnnotatorCanvas({
       const y = a.bbox_y1 * sy;
       const w = (a.bbox_x2 - a.bbox_x1) * sx;
       const h = (a.bbox_y2 - a.bbox_y1) * sy;
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeRect(x, y, w, h);
+      if (
+        a.rbbox_cx != null &&
+        a.rbbox_cy != null &&
+        a.rbbox_w != null &&
+        a.rbbox_h != null &&
+        a.rbbox_theta != null
+      ) {
+        const rw = a.rbbox_w * sx;
+        const rh = a.rbbox_h * sy;
+        ctx.save();
+        ctx.translate(a.rbbox_cx * sx, a.rbbox_cy * sy);
+        ctx.rotate((a.rbbox_theta * Math.PI) / 180);
+        ctx.fillRect(-rw / 2, -rh / 2, rw, rh);
+        ctx.strokeRect(-rw / 2, -rh / 2, rw, rh);
+        ctx.restore();
+      } else {
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
+      }
 
       const label = className(a.class_id);
       ctx.font = '11px sans-serif';

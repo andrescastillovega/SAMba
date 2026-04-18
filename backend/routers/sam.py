@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
@@ -55,6 +57,7 @@ def sam_click(
 class TextDetectRequest(BaseModel):
     prompt: str
     class_id: int | None = None
+    oriented: bool = False
 
 
 @router.post("/{idx}/text_detect", response_model=list[schemas.AnnotationRead])
@@ -94,11 +97,11 @@ def text_detect(
             bbox_y1=bbox[1],
             bbox_x2=bbox[2],
             bbox_y2=bbox[3],
-            rbbox_cx=det["rbbox_cx"],
-            rbbox_cy=det["rbbox_cy"],
-            rbbox_w=det["rbbox_w"],
-            rbbox_h=det["rbbox_h"],
-            rbbox_theta=det["rbbox_theta"],
+            rbbox_cx=det["rbbox_cx"] if payload.oriented else None,
+            rbbox_cy=det["rbbox_cy"] if payload.oriented else None,
+            rbbox_w=det["rbbox_w"] if payload.oriented else None,
+            rbbox_h=det["rbbox_h"] if payload.oriented else None,
+            rbbox_theta=det["rbbox_theta"] if payload.oriented else None,
             source=models.AnnotationSource.auto,
             confidence=det.get("score", 1.0),
         )
@@ -108,3 +111,39 @@ def text_detect(
     for a in created:
         session.refresh(a)
     return [schemas.AnnotationRead(**a.model_dump()) for a in created]
+
+
+@router.post("/{idx}/refine_to_rotated", response_model=list[schemas.AnnotationRead])
+def refine_to_rotated(
+    project_id: int,
+    idx: int,
+    session: Session = Depends(get_session),
+):
+    frame = _get_frame(session, project_id, idx)
+    anns = session.exec(
+        select(models.Annotation).where(
+            models.Annotation.project_id == project_id,
+            models.Annotation.frame_id == frame.id,
+        )
+    ).all()
+
+    updated: list[models.Annotation] = []
+    image_path = frame_abspath(frame)
+    for a in anns:
+        box = [a.bbox_x1, a.bbox_y1, a.bbox_x2, a.bbox_y2]
+        bbox, _ = predict_from_points(image_path, points=[], labels=[], box=box)
+        if not bbox:
+            continue
+        a.rbbox_cx = bbox["rbbox_cx"]
+        a.rbbox_cy = bbox["rbbox_cy"]
+        a.rbbox_w = bbox["rbbox_w"]
+        a.rbbox_h = bbox["rbbox_h"]
+        a.rbbox_theta = bbox["rbbox_theta"]
+        a.polygon_json = json.dumps(bbox["polygon"])
+        session.add(a)
+        updated.append(a)
+
+    session.commit()
+    for a in updated:
+        session.refresh(a)
+    return [schemas.AnnotationRead(**a.model_dump()) for a in updated]
