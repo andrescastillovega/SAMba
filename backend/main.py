@@ -16,7 +16,6 @@ from .routers import (
     preannotate,
     projects,
     sam,
-    tracks,
     videos,
 )
 
@@ -26,11 +25,10 @@ async def lifespan(app: FastAPI):
     init_db()
     app.state.yolo_model = None  # loaded lazily in services.yolo_sahi
     app.state.sam_image_predictor = None
-    app.state.sam_video_states = {}
     yield
 
 
-app = FastAPI(title="Drone-Traffic Annotator", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="SAMba video annotator", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,5 +57,4 @@ app.include_router(frames.router)
 app.include_router(annotations.router)
 app.include_router(preannotate.router)
 app.include_router(sam.router)
-app.include_router(tracks.router)
 app.include_router(export.router)

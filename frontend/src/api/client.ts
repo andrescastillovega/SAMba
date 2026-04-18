@@ -14,7 +14,6 @@ export type Project = {
 
 export type Frame = { id: number; idx: number; width: number; height: number };
 export type Klass = { id: number; name: string; color: string; annotation_count: number };
-export type Track = { id: number; class_id: number; label: string | null; color: string | null };
 
 export type AnnotationSource = 'auto' | 'manual' | 'propagated';
 

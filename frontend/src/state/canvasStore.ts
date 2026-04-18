@@ -21,12 +21,6 @@ type CanvasState = {
   selectedAnnotationId: number | null;
   setSelectedAnnotationId: (id: number | null) => void;
 
-  selectedTrackId: number | null;
-  setSelectedTrackId: (id: number | null) => void;
-
-  correctionMode: boolean;
-  setCorrectionMode: (v: boolean) => void;
-
   hiddenClassIds: number[];
   toggleClassVisibility: (id: number) => void;
   hideAllClasses: (ids: number[]) => void;
@@ -52,12 +46,6 @@ export const useCanvas = create<CanvasState>((set) => ({
 
   selectedAnnotationId: null,
   setSelectedAnnotationId: (id) => set({ selectedAnnotationId: id }),
-
-  selectedTrackId: null,
-  setSelectedTrackId: (id) => set({ selectedTrackId: id }),
-
-  correctionMode: false,
-  setCorrectionMode: (v) => set({ correctionMode: v }),
 
   hiddenClassIds: [],
   toggleClassVisibility: (id) =>

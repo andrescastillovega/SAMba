@@ -3,13 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, preannotateFrame, type Annotation } from '../api/client';
 import { useCanvas } from '../state/canvasStore';
 import { useToasts } from '../state/toastStore';
+import Icon from './Icon';
 
 export default function ActionBar({ projectId, frameIdx }: { projectId: number; frameIdx: number }) {
   const qc = useQueryClient();
   const interactiveMode = useCanvas((s) => s.interactiveMode);
   const setInteractiveMode = useCanvas((s) => s.setInteractiveMode);
   const pushToast = useToasts((s) => s.push);
-  const [propN, setPropN] = useState(30);
   const [textPrompt, setTextPrompt] = useState('');
 
   const preannotate = useMutation({
@@ -19,7 +19,9 @@ export default function ActionBar({ projectId, frameIdx }: { projectId: number; 
       qc.invalidateQueries({ queryKey: ['classes', projectId] });
       const n = added?.length ?? 0;
       pushToast(
-        n === 0 ? 'YOLO: no new boxes (all overlapped).' : `YOLO: added ${n} box${n === 1 ? '' : 'es'}.`,
+        n === 0
+          ? 'Pre-annotate: no new boxes (all overlapped).'
+          : `Pre-annotate: added ${n} box${n === 1 ? '' : 'es'}.`,
         n === 0 ? 'warning' : 'success',
       );
     },
@@ -41,33 +43,8 @@ export default function ActionBar({ projectId, frameIdx }: { projectId: number; 
       const n = added?.length ?? 0;
       pushToast(
         n === 0
-          ? `SAM 3 "${textPrompt}": no new boxes (all overlapped existing).`
-          : `SAM 3 "${textPrompt}": added ${n} box${n === 1 ? '' : 'es'}.`,
-        n === 0 ? 'warning' : 'success',
-      );
-    },
-  });
-
-  const propagate = useMutation({
-    mutationKey: ['sam'],
-    mutationFn: async () => {
-      const end = frameIdx + propN;
-      return api
-        .post(`projects/${projectId}/tracks/propagate`, {
-          json: { start_frame: frameIdx, end_frame: end, objects: [] },
-          timeout: 30 * 60 * 1000,
-        })
-        .json<{ written: number }>();
-    },
-    onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ['annotations', projectId] });
-      qc.invalidateQueries({ queryKey: ['tracks', projectId] });
-      qc.invalidateQueries({ queryKey: ['classes', projectId] });
-      const n = res?.written ?? 0;
-      pushToast(
-        n === 0
-          ? 'Propagate: no boxes on this frame to track. Add or pre-annotate boxes first.'
-          : `Propagate: wrote ${n} annotation${n === 1 ? '' : 's'} across frames.`,
+          ? `"${textPrompt}": no new boxes (all overlapped existing).`
+          : `"${textPrompt}": added ${n} box${n === 1 ? '' : 'es'}.`,
         n === 0 ? 'warning' : 'success',
       );
     },
@@ -78,29 +55,16 @@ export default function ActionBar({ projectId, frameIdx }: { projectId: number; 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/60 px-4 py-2 text-sm">
       <button
-        onClick={() => setInteractiveMode(!interactiveMode)}
-        aria-pressed={interactiveMode}
-        className={`rounded px-3 py-1 text-xs font-medium ring-1 ring-slate-700 ${
-          interactiveMode
-            ? 'bg-sky-600 text-white ring-sky-500 shadow-inner'
-            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-        }`}
-        title="Toggle SAM point inference on left-click"
-      >
-        Interactive selection
-      </button>
-
-      <button
         onClick={() => preannotate.mutate()}
         disabled={preannotate.isPending}
-        className="rounded bg-amber-600 px-3 py-1 font-medium hover:bg-amber-500 disabled:opacity-50"
-        title="SAHI-tiled inference with best_visdrone.pt"
+        className="rounded bg-amber-600 px-4 py-1.5 text-sm font-medium hover:bg-amber-500 disabled:opacity-50"
+        title="Run object detection on the current frame"
       >
-        {preannotate.isPending ? 'Pre-annotating…' : 'Pre-annotate (YOLO)'}
+        {preannotate.isPending ? 'Pre-annotating…' : 'Pre-annotate'}
       </button>
 
       <form
-        className="flex items-center gap-1 text-xs"
+        className="flex items-center gap-1"
         onSubmit={(e) => {
           e.preventDefault();
           if (textPrompt.trim()) textDetect.mutate();
@@ -109,35 +73,31 @@ export default function ActionBar({ projectId, frameIdx }: { projectId: number; 
         <input
           value={textPrompt}
           onChange={(e) => setTextPrompt(e.target.value)}
-          placeholder='SAM 3 text prompt ("cars")'
-          className="w-48 rounded bg-slate-800 px-2 py-1"
+          placeholder='Text prompt ("cars")'
+          className="w-52 rounded bg-slate-800 px-3 py-1.5 text-sm"
         />
         <button
           type="submit"
           disabled={!textPrompt.trim() || textDetect.isPending}
-          className="rounded bg-violet-600 px-3 py-1 font-medium hover:bg-violet-500 disabled:opacity-50"
+          className="rounded bg-violet-600 px-4 py-1.5 text-sm font-medium hover:bg-violet-500 disabled:opacity-50"
         >
-          {textDetect.isPending ? 'Detecting…' : 'Detect (SAM 3 text)'}
+          {textDetect.isPending ? 'Detecting…' : 'Detect'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setInteractiveMode(!interactiveMode)}
+          aria-pressed={interactiveMode}
+          aria-label="Interactive selection"
+          title="Interactive selection"
+          className={`flex items-center justify-center rounded px-2.5 py-1.5 ring-1 ${
+            interactiveMode
+              ? 'bg-sky-600 text-white ring-sky-500 shadow-inner'
+              : 'bg-slate-800 text-slate-300 ring-slate-700 hover:bg-slate-700'
+          }`}
+        >
+          <Icon name="right_click" size={20} />
         </button>
       </form>
-
-      <div className="flex items-center gap-1 text-xs">
-        <label>Propagate +</label>
-        <input
-          type="number"
-          min={1}
-          value={propN}
-          onChange={(e) => setPropN(Number(e.target.value) || 1)}
-          className="w-16 rounded bg-slate-800 px-2 py-1"
-        />
-        <button
-          onClick={() => propagate.mutate()}
-          disabled={propagate.isPending}
-          className="rounded bg-emerald-600 px-3 py-1 font-medium hover:bg-emerald-500 disabled:opacity-50"
-        >
-          {propagate.isPending ? 'Propagating…' : 'Propagate'}
-        </button>
-      </div>
 
       <div className="ml-auto flex gap-1">
         {['yolo', 'coco', 'voc'].map((fmt) => (
@@ -153,3 +113,4 @@ export default function ActionBar({ projectId, frameIdx }: { projectId: number; 
     </div>
   );
 }
+

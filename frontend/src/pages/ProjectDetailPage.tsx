@@ -5,7 +5,6 @@ import VideoUpload from '../components/VideoUpload';
 import AnnotatorCanvas from '../components/AnnotatorCanvas';
 import FrameTimeline from '../components/FrameTimeline';
 import ClassPalette from '../components/ClassPalette';
-import TrackPanel from '../components/TrackPanel';
 import ActionBar from '../components/ActionBar';
 import { useCanvas } from '../state/canvasStore';
 
@@ -47,7 +46,6 @@ export default function ProjectDetailPage() {
           <p className="text-xs text-slate-400">{frames.length} frames</p>
         </div>
         <ClassPalette projectId={projectId} classes={classes} />
-        <TrackPanel projectId={projectId} />
       </aside>
 
       <section className="flex flex-1 flex-col">

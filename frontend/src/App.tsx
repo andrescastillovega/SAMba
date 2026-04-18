@@ -9,7 +9,7 @@ export default function App() {
     <div className="flex h-full flex-col">
       <header className="border-b border-slate-800 bg-slate-900/80 px-6 py-3 backdrop-blur">
         <Link to="/" className="text-lg font-semibold tracking-tight">
-          Drone-Traffic Annotator
+          SAMba video annotator
         </Link>
       </header>
       <main className="flex-1 overflow-hidden">

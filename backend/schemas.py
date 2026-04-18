@@ -43,13 +43,6 @@ class FrameRead(BaseModel):
     height: int
 
 
-class TrackRead(BaseModel):
-    id: int
-    class_id: int
-    label: str | None
-    color: str | None
-
-
 class AnnotationBase(BaseModel):
     class_id: int
     bbox_x1: float
@@ -117,27 +110,6 @@ class SamClickResponse(BaseModel):
     rbbox_h: float
     rbbox_theta: float
     score: float
-
-
-class PropagateObject(BaseModel):
-    track_id: int
-    class_id: int
-    frame_idx: int
-    points: list[SamPoint] = []
-    box: list[float] | None = None
-
-
-class PropagateRequest(BaseModel):
-    start_frame: int
-    end_frame: int
-    objects: list[PropagateObject]
-
-
-class CorrectionRequest(BaseModel):
-    frame_idx: int
-    points: list[SamPoint] = []
-    box: list[float] | None = None
-    propagate_to: int | None = None
 
 
 class HealthResponse(BaseModel):

@@ -51,9 +51,6 @@ export default function AnnotatorCanvas({
   const previewMask = useCanvas((s) => s.previewMask);
   const setPreviewMask = useCanvas((s) => s.setPreviewMask);
   const activeClassId = useCanvas((s) => s.activeClassId);
-  const selectedTrackId = useCanvas((s) => s.selectedTrackId);
-  const correctionMode = useCanvas((s) => s.correctionMode);
-  const setCorrectionMode = useCanvas((s) => s.setCorrectionMode);
   const hiddenClassIds = useCanvas((s) => s.hiddenClassIds);
 
   const { data: annotations = [] } = useQuery({
@@ -115,21 +112,6 @@ export default function AnnotatorCanvas({
     },
   });
 
-  const correct = useMutation({
-    mutationKey: ['sam'],
-    mutationFn: async (points: SamPoint[]) => {
-      if (selectedTrackId == null) return;
-      await api.post(`projects/${projectId}/tracks/${selectedTrackId}/correct`, {
-        json: { frame_idx: frameIdx, points },
-      });
-    },
-    onSuccess: () => {
-      setCorrectionMode(false);
-      qc.invalidateQueries({ queryKey: ['annotations', projectId] });
-      qc.invalidateQueries({ queryKey: ['classes', projectId] });
-    },
-  });
-
   const del = useMutation({
     mutationFn: (id: number) => deleteAnnotation(projectId, id),
     onSuccess: () => {
@@ -170,14 +152,10 @@ export default function AnnotatorCanvas({
       return;
     }
     setMenu(null);
-    if (!interactiveMode && !(correctionMode && selectedTrackId != null)) return;
+    if (!interactiveMode) return;
     const { x, y } = toImageCoords(e);
     const label: 0 | 1 = e.ctrlKey || e.metaKey ? 0 : 1;
     const point: SamPoint = { x, y, label };
-    if (correctionMode && selectedTrackId != null) {
-      correct.mutate([point]);
-      return;
-    }
     addPoint(point);
     runSam.mutate({ points: [...pendingPoints, point] });
   };
@@ -225,9 +203,7 @@ export default function AnnotatorCanvas({
       ctx.fillRect(x, y, w, h);
       ctx.strokeRect(x, y, w, h);
 
-      const label = a.track_id != null
-        ? `${className(a.class_id)} #${a.track_id}`
-        : className(a.class_id);
+      const label = className(a.class_id);
       ctx.font = '11px sans-serif';
       const padX = 3;
       const padY = 2;
@@ -378,11 +354,7 @@ export default function AnnotatorCanvas({
     setMenu(null);
   }, [frameIdx]);
 
-  const cursor = panStateRef.current
-    ? 'grabbing'
-    : interactiveMode || (correctionMode && selectedTrackId != null)
-    ? 'crosshair'
-    : 'default';
+  const cursor = panStateRef.current ? 'grabbing' : interactiveMode ? 'crosshair' : 'default';
 
   const panCursor = cursor;
 
